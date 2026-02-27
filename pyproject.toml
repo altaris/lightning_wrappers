@@ -91,3 +91,6 @@ dev = [
 timm = [
     "timm>=1.0.25",
 ]
+transformers = [
+    "transformers>=5.2.0",
+]
