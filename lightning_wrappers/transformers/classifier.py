@@ -2,26 +2,22 @@
 
 from typing import Any, Callable
 
-import lightning as pl
 from anyio.functools import lru_cache
-from torch import nn
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
-from ..utils import replace_head
+from ..base import BaseClassifier
 
 
-class TransformersClassifier(pl.LightningModule):
+class TransformersClassifier(BaseClassifier):
     """
     Pretrained classifier model loaded from the [HuggingFace model
     hub](https://huggingface.co/models?pipeline_tag=image-classification).
     """
 
-    model: nn.Module
-
     def __init__(
         self,
         model_name: str,
-        n_classes: int | None = None,
+        n_classes: int,
         head_name: str | None = None,
         **kwargs: Any,
     ) -> None:
@@ -31,24 +27,23 @@ class TransformersClassifier(pl.LightningModule):
                 hub](https://huggingface.co/models?pipeline_tag=image-classification).
                 If the model name starts with `timm/`, use
                 `lightning_wrappers.timm.TimmClassifier` instead.
-            n_classes (int | None, optional): Number of output classes. If left
-                to `None`, the default number of output classes of the
-                pretrained model is used, and the classification head is not
-                replaced.
+            n_classes (int): Number of output classes.
             head_name (str | None, optional): Name of the classification head.
                 If None, the default head is used.
         """
-        self.save_hyperparameters()
         if model_name.startswith("timm/"):
             raise ValueError(
                 "If the model name starts with `timm/`, use "
                 "`lightning_wrappers.timm.TimmClassifier` instead."
             )
-        self.model = AutoModelForImageClassification.from_pretrained(
-            model_name
+        model = AutoModelForImageClassification.from_pretrained(model_name)
+        super().__init__(
+            model=model,
+            n_classes=n_classes,
+            head_name=head_name,
+            **kwargs,
         )
-        if head_name is not None and n_classes is not None:
-            self.model = replace_head(self.model, head_name, n_classes)
+        self.save_hyperparameters()
 
     @lru_cache(maxsize=1)
     def get_transform(

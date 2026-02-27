@@ -3,13 +3,13 @@
 from functools import lru_cache
 from typing import Any, Callable
 
-import lightning as pl
-from torch import nn
 from torchvision.models import get_model, get_model_weights
 from torchvision.transforms import v2 as tr
 
+from ..base import BaseClassifier
 
-class TorchvisionClassifier(pl.LightningModule):
+
+class TorchvisionClassifier(BaseClassifier):
     """
     A torchvision classifier wrapped in a `LightningModule`.
 
@@ -18,28 +18,27 @@ class TorchvisionClassifier(pl.LightningModule):
         - [`torchvision` model zoo](https://docs.pytorch.org/vision/stable/models.html#classification)
     """
 
-    model: nn.Module
-
     def __init__(
         self,
         model_name: str,
-        n_classes: int | None = None,
+        n_classes: int,
         head_name: str | None = None,
         weights: Any = "DEFAULT",
+        **kwargs: Any,
     ) -> None:
         """
         Args:
             model_name (str): Name of the model architecture. See the [`torchvision` model zoo](https://docs.pytorch.org/vision/stable/models.html#classification).
-            n_classes (int | None, optional): Number of output classes. If left
-                to `None`, the default number of output classes of the
-                pretrained model is used, and the classification head is not
-                replaced.
+            n_classes (int) : Number of output classes.
             head_name (str | None, optional): Name of the classification head.
                 If None, the default head is used.
             weights (Any, optional): Weights to use for the model. Defaults to
                 "DEFAULT".
         """
-        self.model = get_model(model_name, weights=weights)
+        model = get_model(model_name, weights=weights)
+        super().__init__(
+            model=model, n_classes=n_classes, head_name=head_name, **kwargs
+        )
         self.save_hyperparameters()
 
     @lru_cache(maxsize=1)
