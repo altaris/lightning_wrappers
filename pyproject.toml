@@ -1,7 +1,12 @@
 # https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#a-full-example
 [project]
     authors         = [{ name = "Cédric HT" }]
-    dependencies    = []
+    dependencies    = [
+    "lightning>=2.6.1",
+    "pillow>=12.1.1",
+    "torchmetrics>=1.8.2",
+    "torchvision>=0.25.0",
+]
     description     = "Common classifier and classification data classes wrapped in Pytorch Lightning classes"
     license         = { file = "LICENSE" }
     name            = "lightning_wrappers"
