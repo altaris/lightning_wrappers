@@ -35,8 +35,9 @@ def replace_head(
         )
     if head.out_features == n_classes:
         logging.warning(
-            f"Module head '{head_name}' already have {n_classes} output "
-            "neurons. Not replacing it"
+            "Module head '%s' already has %d output neurons. Not replacing it",
+            head_name,
+            n_classes,
         )
         return module
     new_head = nn.Linear(
