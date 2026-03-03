@@ -1,6 +1,5 @@
 """See `TorchvisionClassifier` documentation."""
 
-from functools import lru_cache
 from typing import Any, Callable
 
 from torchvision.models import get_model, get_model_weights
@@ -41,7 +40,6 @@ class TorchvisionClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    @lru_cache(maxsize=1)
     def get_transform(self) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """
         Creates an image processor based on the transform object of the model's

@@ -6,7 +6,6 @@ See also:
     - [`timm` model zoo](https://huggingface.co/timm/models)
 """
 
-from functools import lru_cache
 from typing import Any, Callable
 
 import timm
@@ -40,7 +39,6 @@ class TimmClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    @lru_cache(maxsize=1)
     def get_transform(self) -> Callable | transforms.Compose:
         """
         Get the transformation function for the model.

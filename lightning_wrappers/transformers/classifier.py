@@ -2,7 +2,6 @@
 
 from typing import Any, Callable
 
-from anyio.functools import lru_cache
 from transformers import AutoImageProcessor, AutoModelForImageClassification
 
 from ..base import BaseClassifier
@@ -45,7 +44,6 @@ class TransformersClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    @lru_cache(maxsize=1)
     def get_transform(
         self, *args: Any, **kwargs: Any
     ) -> Callable[[dict[str, Any]], dict[str, Any]]:
