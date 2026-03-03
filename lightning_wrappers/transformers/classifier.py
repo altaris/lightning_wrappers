@@ -1,4 +1,4 @@
-"""See `HuggingFaceClassifier` documentation."""
+"""See `TransformersClassifier` documentation."""
 
 from typing import Any, Callable
 
@@ -44,7 +44,7 @@ class TransformersClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    def get_transform(
+    def _get_transform(
         self, *args: Any, **kwargs: Any
     ) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """

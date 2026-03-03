@@ -9,7 +9,7 @@ See also:
 from typing import Any, Callable
 
 import timm
-from torchvision import transforms
+import torchvision.transforms.v2 as transforms
 
 from ..base import BaseClassifier
 
@@ -39,7 +39,7 @@ class TimmClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    def get_transform(self) -> Callable | transforms.Compose:
+    def _get_transform(self) -> Callable | transforms.Compose:
         """
         Get the transformation function for the model.
 

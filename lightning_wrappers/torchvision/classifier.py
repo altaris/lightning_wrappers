@@ -2,8 +2,8 @@
 
 from typing import Any, Callable
 
+import torchvision.transforms.v2 as transforms
 from torchvision.models import get_model, get_model_weights
-from torchvision.transforms import v2 as tr
 
 from ..base import BaseClassifier
 
@@ -40,12 +40,12 @@ class TorchvisionClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    def get_transform(self) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    def _get_transform(self) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """
         Creates an image processor based on the transform object of the model's
         chosen weights. For example,
 
-            TorchvisionClassifier.get_image_processor("alexnet")
+            TorchvisionClassifier.get_transform("alexnet")
 
         is analogous to
 
@@ -54,9 +54,9 @@ class TorchvisionClassifier(BaseClassifier):
 
         model_name: str = self.hparams.model_name  # type: ignore
         weights: str = self.hparams.weights  # type: ignore
-        transform = tr.Compose(
+        transform = transforms.Compose(
             [
-                tr.RGB(),
+                transforms.RGB(),
                 get_model_weights(model_name)[weights].transforms(),
             ]
         )

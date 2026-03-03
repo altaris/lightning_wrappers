@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Any, Callable
 
 import lightning as pl
@@ -10,7 +11,7 @@ from torchmetrics import Accuracy
 from ..utils import replace_head
 
 
-class BaseClassifier(pl.LightningModule):
+class BaseClassifier(ABC, pl.LightningModule):
     model: nn.Module
     lr: float
     train_top1: Accuracy
@@ -19,6 +20,7 @@ class BaseClassifier(pl.LightningModule):
     val_top5: Accuracy | None
     test_top1: Accuracy
     test_top5: Accuracy | None
+    _transform: Callable | None = None
 
     def __init__(
         self,
@@ -29,17 +31,22 @@ class BaseClassifier(pl.LightningModule):
     ) -> None:
         super().__init__()
         self.save_hyperparameters(ignore=["model"])
+
         self.model = model
         if head_name is not None:
             self.model = replace_head(self.model, head_name, n_classes)
+
         task = "multiclass" if n_classes > 2 else "binary"
         ak: dict[str, Any] = {"task": task, "num_classes": n_classes}
-        self.train_top1 = Accuracy(**ak, top_k=1)
-        self.val_top1 = Accuracy(**ak, top_k=1)
         self.test_top1 = Accuracy(**ak, top_k=1)
-        self.train_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
-        self.val_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
         self.test_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+        self.train_top1 = Accuracy(**ak, top_k=1)
+        self.train_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+        self.val_top1 = Accuracy(**ak, top_k=1)
+        self.val_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+
+    @abstractmethod
+    def _get_transform(self, *args: Any, **kwargs: Any) -> Callable: ...
 
     def _step(
         self,
@@ -66,35 +73,62 @@ class BaseClassifier(pl.LightningModule):
         return torch.optim.AdamW(self.parameters(), lr=lr)
 
     def forward(
-        self, x: torch.Tensor | Image.Image | list[Image.Image]
+        self, x: torch.Tensor | Image.Image | list | dict
     ) -> torch.Tensor:
         """
         Forward pass through the model.
 
         Args:
-            x: Input tensor of shape `(B, C, H, W)` or `(C, H, W)`, a single PIL
-                Image, or a list of PIL Images. In the latter case, all images
-                are assumed to have the same size.
+            x: One of:
+                - A tensor of shape `(B, C, H, W)` or `(C, H, W)`,
+                - A single PIL Image,
+                - A list of PIL Images (assumed same size),
+                - A dict with an image key (processed by `get_transform`).
 
         Returns:
             Logits of shape `(B, num_classes)`. If a `(C, H, W)` tensor or a
             single image was passed, `B = 1`.
         """
-        # TODO: implement stricter checks
-        if isinstance(x, list):
+        if isinstance(x, dict):
+            tr = self.get_transform()
+            x = tr(x)
+            if not isinstance(x, torch.Tensor):
+                raise TypeError(
+                    f"Transform returned {type(x).__name__}, expected Tensor"
+                )
+        elif isinstance(x, list):
+            if not x:
+                raise ValueError("Empty image list")
+            if not isinstance(x[0], Image.Image):
+                raise TypeError(
+                    "List elements must be PIL Images, got"
+                    f" {type(x[0]).__name__}"
+                )
             tr = self.get_transform()
             x = torch.stack([tr(img) for img in x])
         elif isinstance(x, Image.Image):
             tr = self.get_transform()
             x = tr(x)
-            assert isinstance(x, torch.Tensor)
+            if not isinstance(x, torch.Tensor):
+                raise TypeError(
+                    f"Transform returned {type(x).__name__}, expected Tensor"
+                )
+        elif not isinstance(x, torch.Tensor):
+            raise TypeError(
+                f"Expected Tensor, PIL Image, list, or dict,"
+                f" got {type(x).__name__}"
+            )
         if x.ndim == 3:
             x = x.unsqueeze(0)
+        if x.ndim != 4:
+            raise ValueError(f"Expected 4D tensor (B, C, H, W), got {x.ndim}D")
         x = x.to(self.device)
         return self.model(x)  # type: ignore
 
     def get_transform(self, *args: Any, **kwargs: Any) -> Callable:
-        return lambda x: x
+        if self._transform is None:
+            self._transform = self._get_transform(*args, **kwargs)
+        return self._transform
 
     def test_step(
         self,
