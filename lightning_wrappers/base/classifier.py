@@ -14,11 +14,11 @@ class BaseClassifier(pl.LightningModule):
     model: nn.Module
     lr: float
     train_top1: Accuracy
-    train_top5: Accuracy
+    train_top5: Accuracy | None
     val_top1: Accuracy
-    val_top5: Accuracy
+    val_top5: Accuracy | None
     test_top1: Accuracy
-    test_top5: Accuracy
+    test_top5: Accuracy | None
 
     def __init__(
         self,
@@ -35,11 +35,30 @@ class BaseClassifier(pl.LightningModule):
         task = "multiclass" if n_classes > 2 else "binary"
         ak: dict[str, Any] = {"task": task, "num_classes": n_classes}
         self.train_top1 = Accuracy(**ak, top_k=1)
-        self.train_top5 = Accuracy(**ak, top_k=5)
         self.val_top1 = Accuracy(**ak, top_k=1)
-        self.val_top5 = Accuracy(**ak, top_k=5)
         self.test_top1 = Accuracy(**ak, top_k=1)
-        self.test_top5 = Accuracy(**ak, top_k=5)
+        self.train_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+        self.val_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+        self.test_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
+
+    def _step(
+        self,
+        prefix: str,
+        top1: Accuracy,
+        top5: Accuracy | None,
+        batch: tuple[torch.Tensor, torch.Tensor],
+    ) -> torch.Tensor:
+        x, y = batch
+        logits = self(x)
+        loss = nnf.cross_entropy(logits, y)
+        d: dict[str, torch.Tensor] = {
+            f"{prefix}/loss": loss,
+            f"{prefix}/top1": top1(logits, y),
+        }
+        if top5 is not None:
+            d[f"{prefix}/top5"] = top5(logits, y)
+        self.log_dict(d, prog_bar=True, sync_dist=True)
+        return loss
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """Configure optimizer (AdamW)."""
@@ -78,50 +97,25 @@ class BaseClassifier(pl.LightningModule):
         return lambda x: x
 
     def test_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], *_: Any, **__: Any
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        *_: Any,
+        **__: Any,
     ) -> None:
-        x, y = batch
-        logits = self(x)
-        loss = nnf.cross_entropy(logits, y)
-        self.log_dict(
-            {
-                "test/loss": loss,
-                "test/top1": self.test_top1(logits, y),
-                "test/top5": self.test_top5(logits, y),
-            },
-            prog_bar=True,
-            sync_dist=True,
-        )
+        self._step("test", self.test_top1, self.test_top5, batch)
 
     def training_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], *_: Any, **__: Any
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        *_: Any,
+        **__: Any,
     ) -> torch.Tensor:
-        x, y = batch
-        logits = self(x)
-        loss = nnf.cross_entropy(logits, y)
-        self.log_dict(
-            {
-                "train/loss": loss,
-                "train/top1": self.train_top1(logits, y),
-                "train/top5": self.train_top5(logits, y),
-            },
-            prog_bar=True,
-            sync_dist=True,
-        )
-        return loss
+        return self._step("train", self.train_top1, self.train_top5, batch)
 
     def validation_step(
-        self, batch: tuple[torch.Tensor, torch.Tensor], *_: Any, **__: Any
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor],
+        *_: Any,
+        **__: Any,
     ) -> None:
-        x, y = batch
-        logits = self(x)
-        loss = nnf.cross_entropy(logits, y)
-        self.log_dict(
-            {
-                "val/loss": loss,
-                "val/top1": self.val_top1(logits, y),
-                "val/top5": self.val_top5(logits, y),
-            },
-            prog_bar=True,
-            sync_dist=True,
-        )
+        self._step("val", self.val_top1, self.val_top5, batch)
