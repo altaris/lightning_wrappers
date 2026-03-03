@@ -15,7 +15,7 @@ def replace_head(
     Args:
         module (nn.Module):
         head_name (str): e.g. `model.classifier.1`. The
-            name of a submodule can be retried by inspecting the output of
+            name of a submodule can be retrieved by inspecting the output of
             `nn.Module.named_modules`.
         n_classes (int): The desired number of output neurons.
 
@@ -47,7 +47,7 @@ def replace_head(
     )
     parent = module.get_submodule(".".join(head_name.split(".")[:-1]))
     if isinstance(parent, nn.Sequential):
-        parent[-1] = new_head
+        parent[int(head_name.split(".")[-1])] = new_head
     else:
         setattr(parent, head_name.split(".")[-1], new_head)
     return module
