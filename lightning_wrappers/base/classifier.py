@@ -13,8 +13,12 @@ from ..utils import replace_head
 class BaseClassifier(pl.LightningModule):
     model: nn.Module
     lr: float
-    top1: Accuracy
-    top5: Accuracy
+    train_top1: Accuracy
+    train_top5: Accuracy
+    val_top1: Accuracy
+    val_top5: Accuracy
+    test_top1: Accuracy
+    test_top5: Accuracy
 
     def __init__(
         self,
@@ -29,8 +33,13 @@ class BaseClassifier(pl.LightningModule):
         if head_name is not None:
             self.model = replace_head(self.model, head_name, n_classes)
         task = "multiclass" if n_classes > 2 else "binary"
-        self.top1 = Accuracy(task=task, num_classes=n_classes, top_k=1)  # type: ignore
-        self.top5 = Accuracy(task=task, num_classes=n_classes, top_k=5)  # type: ignore
+        ak: dict[str, Any] = {"task": task, "num_classes": n_classes}
+        self.train_top1 = Accuracy(**ak, top_k=1)
+        self.train_top5 = Accuracy(**ak, top_k=5)
+        self.val_top1 = Accuracy(**ak, top_k=1)
+        self.val_top5 = Accuracy(**ak, top_k=5)
+        self.test_top1 = Accuracy(**ak, top_k=1)
+        self.test_top5 = Accuracy(**ak, top_k=5)
 
     def configure_optimizers(self) -> torch.optim.Optimizer:
         """Configure optimizer (AdamW)."""
@@ -77,8 +86,8 @@ class BaseClassifier(pl.LightningModule):
         self.log_dict(
             {
                 "test/loss": loss,
-                "test/top1": self.top1(logits, y),
-                "test/top5": self.top5(logits, y),
+                "test/top1": self.test_top1(logits, y),
+                "test/top5": self.test_top5(logits, y),
             },
             prog_bar=True,
             sync_dist=True,
@@ -93,8 +102,8 @@ class BaseClassifier(pl.LightningModule):
         self.log_dict(
             {
                 "train/loss": loss,
-                "train/top1": self.top1(logits, y),
-                "train/top5": self.top5(logits, y),
+                "train/top1": self.train_top1(logits, y),
+                "train/top5": self.train_top5(logits, y),
             },
             prog_bar=True,
             sync_dist=True,
@@ -110,8 +119,8 @@ class BaseClassifier(pl.LightningModule):
         self.log_dict(
             {
                 "val/loss": loss,
-                "val/top1": self.top1(logits, y),
-                "val/top5": self.top5(logits, y),
+                "val/top1": self.val_top1(logits, y),
+                "val/top5": self.val_top5(logits, y),
             },
             prog_bar=True,
             sync_dist=True,
