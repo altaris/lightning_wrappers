@@ -11,26 +11,40 @@ from torchvision.transforms import v2
 
 from ..base.dataset import BaseDataset
 
+DEFAULT_TRAIN_DATALOADER_KWARGS = {
+    "shuffle": True,
+    "batch_size": 64,
+    "num_workers": 2,
+}
+DEFAULT_VAL_DATALOADER_KWARGS = {
+    "batch_size": 64,
+    "num_workers": 2,
+}
+DEFAULT_TEST_DATALOADER_KWARGS = {
+    "batch_size": 64,
+    "num_workers": 2,
+}
 
-def _resolve_dataset_class(
-    dataset_class: str | type[VisionDataset],
+
+def _resolve_dataset_cls(
+    dataset_cls: str | type[VisionDataset],
 ) -> type[VisionDataset]:
     """
     Resolve a dataset class from a string name or pass through a
     class directly.
 
     Args:
-        dataset_class: A `torchvision.datasets` class or its name
+        dataset_cls: A `torchvision.datasets` class or its name
             as a string (e.g. ``"Caltech101"``).
     """
-    if isinstance(dataset_class, str):
-        cls = getattr(torchvision.datasets, dataset_class, None)
+    if isinstance(dataset_cls, str):
+        cls = getattr(torchvision.datasets, dataset_cls, None)
         if cls is None or not (
             isinstance(cls, type) and issubclass(cls, VisionDataset)
         ):
-            raise ValueError(f"Unknown torchvision dataset: {dataset_class!r}")
+            raise ValueError(f"Unknown torchvision dataset: {dataset_cls!r}")
         return cls  # type: ignore
-    return dataset_class
+    return dataset_cls
 
 
 class TorchvisionDataModule(BaseDataset):
@@ -62,66 +76,68 @@ class TorchvisionDataModule(BaseDataset):
         <https://docs.pytorch.org/vision/stable/datasets.html>`_
     """
 
-    batch_size: int
-    dataset_class: Any
+    dataset_cls: Any
     dataset_kwargs: dict[str, Any]
-    num_workers: int
     seed: int
-    target_transform: Callable | None
     test_dataset: Dataset
     test_ratio: float
     train_dataset: Dataset
-    transform: Callable | None
     val_dataset: Dataset
     val_ratio: float
+    train_dataloader_kwargs: dict[str, Any]
+    val_dataloader_kwargs: dict[str, Any]
+    test_dataloader_kwargs: dict[str, Any]
 
     def __init__(
         self,
-        dataset_class: str | type[VisionDataset],
-        batch_size: int = 32,
-        num_workers: int = 0,
+        dataset_cls: str | type[VisionDataset],
         val_ratio: float = 0.2,
         test_ratio: float = 0.1,
         seed: int = 0,
         transform: Callable | None = None,
         target_transform: Callable | None = None,
-        **kwargs: Any,
+        dataset_kwargs: dict[str, Any] | None = None,
+        train_dataloader_kwargs: dict[str, Any] | None = None,
+        val_dataloader_kwargs: dict[str, Any] | None = None,
+        test_dataloader_kwargs: dict[str, Any] | None = None,
     ) -> None:
         """
         Args:
-            dataset_class: A `torchvision.datasets` class or its
+            dataset_cls: A `torchvision.datasets` class or its
                 name as a string (e.g. ``"Caltech101"``).
-            batch_size: Batch size for all dataloaders.
-            num_workers: Number of dataloader workers.
             val_ratio: Fraction of training data used for
                 validation.
             test_ratio: Fraction of data used for testing. Only
                 used when the dataset has no built-in split
                 mechanism.
             seed: Random seed for reproducible splits.
-            transform: Transform applied to images.
+            transform: Transform applied to images. Defaults to
+                resize to 500x500 and convert to float32.
             target_transform: Transform applied to targets.
-            **dataset_kwargs: Extra keyword arguments forwarded to
-                the dataset constructor (e.g. ``download=True``).
+            dataset_kwargs: Extra keyword arguments forwarded
+                to the dataset constructor (e.g.
+                ``{"root": "/data"}``). These are merged into
+                the defaults (``transform``,
+                ``target_transform``, ``root``, ``download``).
+            train_dataloader_kwargs: Overrides for the training
+                `DataLoader`. Merged into
+                `DEFAULT_TRAIN_DATALOADER_KWARGS`.
+            val_dataloader_kwargs: Overrides for the validation
+                `DataLoader`. Merged into
+                `DEFAULT_VAL_DATALOADER_KWARGS`.
+            test_dataloader_kwargs: Overrides for the test
+                `DataLoader`. Merged into
+                `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
         super().__init__()
         self.save_hyperparameters(
-            ignore=["dataset_class", "transform", "target_transform"]
+            ignore=["dataset_cls", "transform", "target_transform"]
         )
-        self.dataset_class = _resolve_dataset_class(dataset_class)
-        self.batch_size = batch_size
-        self.num_workers = num_workers
-        self.val_ratio = val_ratio
-        self.test_ratio = test_ratio
-        self.seed = seed
-        self.transform = transform
-        self.target_transform = target_transform
-        self.dataset_kwargs = kwargs
 
-    def _common_kwargs(self) -> dict[str, Any]:
-        return {
+        self.dataset_cls = _resolve_dataset_cls(dataset_cls)
+        self.dataset_kwargs = {
             "transform": (
-                self.transform
+                transform
                 or v2.Compose(
                     [
                         v2.ToImage(),
@@ -130,11 +146,22 @@ class TorchvisionDataModule(BaseDataset):
                     ]
                 )
             ),
-            "target_transform": self.target_transform,
+            "target_transform": target_transform,
             "root": "~/.torchvision/datasets",
             "download": True,
-            **self.dataset_kwargs,
         }
+        self.dataset_kwargs.update(dataset_kwargs or {})
+
+        self.val_ratio, self.test_ratio = val_ratio, test_ratio
+
+        self.train_dataloader_kwargs = DEFAULT_TRAIN_DATALOADER_KWARGS
+        self.train_dataloader_kwargs.update(train_dataloader_kwargs or {})
+        self.val_dataloader_kwargs = DEFAULT_VAL_DATALOADER_KWARGS
+        self.val_dataloader_kwargs.update(val_dataloader_kwargs or {})
+        self.test_dataloader_kwargs = DEFAULT_TEST_DATALOADER_KWARGS
+        self.test_dataloader_kwargs.update(test_dataloader_kwargs or {})
+
+        self.seed = seed
 
     def _detect_split_key(self) -> str | None:
         """
@@ -144,82 +171,76 @@ class TorchvisionDataModule(BaseDataset):
         Returns:
             ``"train"``, ``"split"``, or ``None``.
         """
-        sig = inspect.signature(self.dataset_class)
+        sig = inspect.signature(self.dataset_cls)
         for key in ("train", "split"):
             if key in sig.parameters:
                 return key
         return None
 
     def prepare_data(self) -> None:
-        """Download the dataset if applicable."""
+        """
+        Download the dataset if applicable.
+
+        Called by Lightning on a single process before `setup`.
+        """
         split_key = self._detect_split_key()
-        kwargs = self._common_kwargs()
         if split_key == "train":
-            self.dataset_class(**kwargs, train=True)
-            self.dataset_class(**kwargs, train=False)
+            self.dataset_cls(**self.dataset_kwargs, train=True)
+            self.dataset_cls(**self.dataset_kwargs, train=False)
         elif split_key == "split":
-            self.dataset_class(**kwargs, split="train")
-            self.dataset_class(**kwargs, split="test")
+            self.dataset_cls(**self.dataset_kwargs, split="train")
+            self.dataset_cls(**self.dataset_kwargs, split="test")
         else:
-            self.dataset_class(**kwargs)
+            self.dataset_cls(**self.dataset_kwargs)
 
     def setup(self, stage: str | None = None) -> None:
         """
-        Instantiates all dataset splits. The `stage` argument is ignored.
+        Create train/val/test dataset splits.
+
+        Sets `train_dataset`, `val_dataset`, and `test_dataset`.
+        The ``stage`` argument is accepted for Lightning
+        compatibility but ignored — all splits are always created.
         """
         split_key = self._detect_split_key()
-        kwargs = self._common_kwargs()
         rng = torch.Generator().manual_seed(self.seed)
         if split_key == "train":
-            full_train = self.dataset_class(**kwargs, train=True)
+            full_train = self.dataset_cls(**self.dataset_kwargs, train=True)
             n_val = int(len(full_train) * self.val_ratio)
             n_train = len(full_train) - n_val
             self.train_dataset, self.val_dataset = random_split(
                 full_train, [n_train, n_val], generator=rng
             )
-            self.test_dataset = self.dataset_class(**kwargs, train=False)
+            self.test_dataset = self.dataset_cls(
+                **self.dataset_kwargs, train=False
+            )
         elif split_key == "split":
-            full_train = self.dataset_class(**kwargs, split="train")
+            full_train = self.dataset_cls(**self.dataset_kwargs, split="train")
             n_val = int(len(full_train) * self.val_ratio)
             n_train = len(full_train) - n_val
             self.train_dataset, self.val_dataset = random_split(
                 full_train, [n_train, n_val], generator=rng
             )
-            self.test_dataset = self.dataset_class(**kwargs, split="test")
-        else:
-            full_ds = self.dataset_class(**kwargs)
-            n = len(full_ds)
-            n_test = int(n * self.test_ratio)
-            n_val = int(n * self.val_ratio)
-            n_train = n - n_val - n_test
-            (
-                self.train_dataset,
-                self.val_dataset,
-                self.test_dataset,
-            ) = random_split(
-                full_ds,
-                [n_train, n_val, n_test],
-                generator=rng,
+            self.test_dataset = self.dataset_cls(
+                **self.dataset_kwargs, split="test"
             )
+        else:
+            full_ds = self.dataset_cls(**self.dataset_kwargs)
+            n = len(full_ds)
+            n_test, n_val = int(n * self.test_ratio), int(n * self.val_ratio)
+            n_train = n - n_val - n_test
+            a, b, c = random_split(
+                full_ds, [n_train, n_val, n_test], generator=rng
+            )
+            self.train_dataset, self.val_dataset, self.test_dataset = a, b, c
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.test_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-        )
+        """Return the test `DataLoader`."""
+        return DataLoader(self.test_dataset, **self.test_dataloader_kwargs)
 
     def train_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
+        """Return the training `DataLoader`."""
+        return DataLoader(self.train_dataset, **self.train_dataloader_kwargs)
 
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-        )
+        """Return the validation `DataLoader`."""
+        return DataLoader(self.val_dataset, **self.val_dataloader_kwargs)
