@@ -2,8 +2,8 @@
 
 from typing import Any, Callable
 
-import torchvision.transforms.v2 as transforms
 from torchvision.models import get_model, get_model_weights
+from torchvision.transforms import v2
 
 from ..base import BaseClassifier
 
@@ -27,12 +27,14 @@ class TorchvisionClassifier(BaseClassifier):
     ) -> None:
         """
         Args:
-            model_name (str): Name of the model architecture. See the [`torchvision` model zoo](https://docs.pytorch.org/vision/stable/models.html#classification).
-            n_classes (int) : Number of output classes.
-            head_name (str | None, optional): Name of the classification head.
-                If None, the default head is used.
-            weights (Any, optional): Weights to use for the model. Defaults to
-                "DEFAULT".
+            model_name: Name of the model architecture.
+                See the `torchvision model zoo
+                <https://docs.pytorch.org/vision/stable/models.html#classification>`_.
+            n_classes: Number of output classes.
+            head_name: Name of the classification head.
+                If ``None``, the default head is used.
+            weights: Weights to use for the model.
+                Defaults to ``"DEFAULT"``.
         """
         model = get_model(model_name, weights=weights)
         super().__init__(
@@ -42,21 +44,22 @@ class TorchvisionClassifier(BaseClassifier):
 
     def _get_transform(self) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """
-        Creates an image processor based on the transform object of the model's
-        chosen weights. For example,
+        Create an image processor from the model's weights.
+
+        For example::
 
             TorchvisionClassifier.get_transform("alexnet")
 
-        is analogous to
+        is analogous to::
 
             get_model_weights("alexnet")["DEFAULT"].transforms()
         """
 
         model_name: str = self.hparams.model_name  # type: ignore
         weights: str = self.hparams.weights  # type: ignore
-        transform = transforms.Compose(
+        transform = v2.Compose(
             [
-                transforms.RGB(),
+                v2.RGB(),
                 get_model_weights(model_name)[weights].transforms(),
             ]
         )

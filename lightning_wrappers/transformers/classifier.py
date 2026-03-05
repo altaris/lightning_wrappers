@@ -22,13 +22,13 @@ class TransformersClassifier(BaseClassifier):
     ) -> None:
         """
         Args:
-            model_name (str): Model name as in the [HuggingFace model
-                hub](https://huggingface.co/models?pipeline_tag=image-classification).
-                If the model name starts with `timm/`, use
-                `lightning_wrappers.timm.TimmClassifier` instead.
-            n_classes (int): Number of output classes.
-            head_name (str | None, optional): Name of the classification head.
-                If None, the default head is used.
+            model_name: Model name from the `HuggingFace hub
+                <https://huggingface.co/models?pipeline_tag=image-classification>`_.
+                If the model name starts with ``timm/``, use
+                `TimmClassifier` instead.
+            n_classes: Number of output classes.
+            head_name: Name of the classification head. If
+                ``None``, the default head is used.
         """
         if model_name.startswith("timm/"):
             raise ValueError(
@@ -48,27 +48,21 @@ class TransformersClassifier(BaseClassifier):
         self, *args: Any, **kwargs: Any
     ) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """
-        Wraps the HuggingFace `AutoImageProcessor` corresponding to the current
-        model architecture.
+        Wrap the HuggingFace `AutoImageProcessor` for this model.
 
-        Note:
-            The `*args` and `**kwargs` are passed to the
-            `AutoImageProcessor.from_pretrained` method. In particular, if you
-            want to pass `kwargs` to the image processor itself, set `kwargs` in
-            the `kwargs`:
+        The ``*args`` and ``**kwargs`` are forwarded to
+        `AutoImageProcessor.from_pretrained`. To pass kwargs to
+        the image processor itself, nest them under ``kwargs``::
 
-            ```python
             model = TransformersClassifier("microsoft/resnet-50", ...)
-            # AutoImageProcessor.from_pretrained("microsoft/resnet-50")
-            # constructs a ConvNextImageProcessor
             transform = model.get_transform(
-                token=True,  # → AutoImageProcessor.from_pretrained
-                kwargs={"do_resize": 384},  → ConvNextImageProcessor.__init__
+                token=True,  # → from_pretrained
+                kwargs={"do_resize": 384},  # → processor
             )
-            ```
 
         See also:
-            [`AutoImageProcessor` documentation](https://huggingface.co/docs/transformers/v5.2.0/en/model_doc/auto#transformers.AutoImageProcessor)
+            `AutoImageProcessor documentation
+            <https://huggingface.co/docs/transformers/v5.2.0/en/model_doc/auto#transformers.AutoImageProcessor>`_
         """
         hftr = AutoImageProcessor.from_pretrained(
             self.hparams.model_name,  # type: ignore

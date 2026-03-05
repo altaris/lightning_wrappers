@@ -12,6 +12,13 @@ from ..utils import replace_head
 
 
 class BaseClassifier(ABC, pl.LightningModule):
+    """
+    Abstract base class for image classifiers.
+
+    Subclasses must implement `_get_transform` to provide the
+    preprocessing pipeline for the model.
+    """
+
     model: nn.Module
     lr: float
     train_top1: Accuracy
@@ -29,6 +36,15 @@ class BaseClassifier(ABC, pl.LightningModule):
         head_name: str | None = None,
         lr: float = 1e-3,
     ) -> None:
+        """
+        Args:
+            model: The backbone model.
+            n_classes: Number of output classes.
+            head_name: Dot-separated name of the classification
+                head submodule to replace. If ``None``, the head
+                is left unchanged.
+            lr: Learning rate for the optimizer.
+        """
         super().__init__()
         self.save_hyperparameters(ignore=["model"])
 
@@ -46,7 +62,9 @@ class BaseClassifier(ABC, pl.LightningModule):
         self.val_top5 = Accuracy(**ak, top_k=5) if n_classes > 5 else None
 
     @abstractmethod
-    def _get_transform(self, *args: Any, **kwargs: Any) -> Callable: ...
+    def _get_transform(self, *args: Any, **kwargs: Any) -> Callable:
+        """Return the preprocessing transform for this model."""
+        ...
 
     def _step(
         self,
@@ -55,6 +73,17 @@ class BaseClassifier(ABC, pl.LightningModule):
         top5: Accuracy | None,
         batch: tuple[torch.Tensor, torch.Tensor],
     ) -> torch.Tensor:
+        """
+        Shared train/val/test step.
+
+        Args:
+            prefix: Metric prefix (``"train"``, ``"val"``, or
+                ``"test"``).
+            top1: Top-1 accuracy metric.
+            top5: Top-5 accuracy metric, or ``None`` if
+                ``n_classes <= 5``.
+            batch: A ``(images, labels)`` tuple.
+        """
         x, y = batch
         logits = self(x)
         loss = nnf.cross_entropy(logits, y)
@@ -126,6 +155,12 @@ class BaseClassifier(ABC, pl.LightningModule):
         return self.model(x)  # type: ignore
 
     def get_transform(self, *args: Any, **kwargs: Any) -> Callable:
+        """
+        Return the cached preprocessing transform.
+
+        On first call, delegates to `_get_transform` and caches
+        the result.
+        """
         if self._transform is None:
             self._transform = self._get_transform(*args, **kwargs)
         return self._transform
@@ -136,6 +171,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         *_: Any,
         **__: Any,
     ) -> None:
+        """Run a single test step."""
         self._step("test", self.test_top1, self.test_top5, batch)
 
     def training_step(
@@ -144,6 +180,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         *_: Any,
         **__: Any,
     ) -> torch.Tensor:
+        """Run a single training step."""
         return self._step("train", self.train_top1, self.train_top5, batch)
 
     def validation_step(
@@ -152,4 +189,5 @@ class BaseClassifier(ABC, pl.LightningModule):
         *_: Any,
         **__: Any,
     ) -> None:
+        """Run a single validation step."""
         self._step("val", self.val_top1, self.val_top5, batch)

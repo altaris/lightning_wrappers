@@ -7,26 +7,25 @@ def replace_head(
     module: nn.Module, head_name: str, n_classes: int
 ) -> nn.Module:
     """
-    Replaces the last linear layer of a model with a new one with a specified
-    number of output neurons (which is not necessarily different from the old
-    head's). *However*, if the model's head already has the correct number of
-    output neurons, then it is not replaced.
+    Replace the last linear layer of a model's head.
+
+    The head is replaced with a new `nn.Linear` having
+    ``n_classes`` output neurons. If the head already has the
+    correct number of output neurons, it is left unchanged.
 
     Args:
-        module (nn.Module):
-        head_name (str): e.g. `model.classifier.1`. The
-            name of a submodule can be retrieved by inspecting the output of
+        module: The model whose head should be replaced.
+        head_name: Dot-separated submodule name, e.g.
+            ``"classifier.1"``. Retrieved via
             `nn.Module.named_modules`.
-        n_classes (int): The desired number of output neurons.
+        n_classes: The desired number of output neurons.
 
     Raises:
-        RuntimeError: If the head module is not a
-            [`nn.Linear`](https://pytorch.org/docs/stable/generated/torch.nn.Linear.html)
-            module
+        RuntimeError: If the head module is not an
+            `nn.Linear` layer.
 
     Returns:
-        The modified module, which is the one passed in argument since the
-        modification is performed in-place.
+        The modified module (in-place).
     """
     head = module.get_submodule(head_name)
     if not isinstance(head, nn.Linear):
