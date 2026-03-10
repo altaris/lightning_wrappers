@@ -9,6 +9,7 @@ See also:
 from typing import Any, Callable
 
 import timm
+import torch
 from torchvision.transforms import v2
 
 from ..base import BaseClassifier
@@ -64,7 +65,8 @@ class TimmClassifier(BaseClassifier):
                 [
                     v2.Resize(256),
                     v2.CenterCrop(224),
-                    v2.ToTensor(),
+                    v2.ToImage(),
+                    v2.ToDtype(torch.float32, scale=True),
                     v2.Normalize(
                         mean=[0.485, 0.456, 0.406],
                         std=[0.229, 0.224, 0.225],
