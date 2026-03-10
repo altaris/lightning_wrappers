@@ -1,4 +1,4 @@
 from .classifier import TorchvisionClassifier
-from .dataset import TorchvisionDataModule
+from .dataset import BuiltinDataModule
 
-__all__ = ["TorchvisionClassifier", "TorchvisionDataModule"]
+__all__ = ["TorchvisionClassifier", "BuiltinDataModule"]

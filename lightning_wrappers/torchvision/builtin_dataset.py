@@ -47,7 +47,7 @@ def _resolve_dataset_cls(
     return dataset_cls
 
 
-class TorchvisionDataModule(BaseDataset):
+class BuiltinDataModule(BaseDataset):
     """
     A Lightning DataModule wrapping a `torchvision.datasets` class.
 
