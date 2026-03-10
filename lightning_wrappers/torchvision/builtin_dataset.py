@@ -9,21 +9,12 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import v2
 
-from ..base import BaseDataset
-
-DEFAULT_TRAIN_DATALOADER_KWARGS = {
-    "shuffle": True,
-    "batch_size": 64,
-    "num_workers": 2,
-}
-DEFAULT_VAL_DATALOADER_KWARGS = {
-    "batch_size": 64,
-    "num_workers": 2,
-}
-DEFAULT_TEST_DATALOADER_KWARGS = {
-    "batch_size": 64,
-    "num_workers": 2,
-}
+from ..base import (
+    DEFAULT_TEST_DATALOADER_KWARGS,
+    DEFAULT_TRAIN_DATALOADER_KWARGS,
+    DEFAULT_VAL_DATALOADER_KWARGS,
+    BaseDataset,
+)
 
 
 def _resolve_dataset_cls(
