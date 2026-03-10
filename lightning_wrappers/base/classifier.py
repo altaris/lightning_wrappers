@@ -20,7 +20,6 @@ class BaseClassifier(ABC, pl.LightningModule):
     """
 
     model: nn.Module
-    lr: float
     train_top1: Accuracy
     train_top5: Accuracy | None
     val_top1: Accuracy
