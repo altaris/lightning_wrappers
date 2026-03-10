@@ -89,6 +89,9 @@
 dev = [
     "mypy>=1.19.1",
 ]
+huggingface = [
+    "datasets>=4.7.0",
+]
 jupyter = [
     "ipykernel>=7.2.0",
     "ipywidgets>=8.1.8",
