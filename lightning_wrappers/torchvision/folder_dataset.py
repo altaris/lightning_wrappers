@@ -78,7 +78,6 @@ class ImageFolderDataModule(BaseDataset):
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
         super().__init__()
-        self.save_hyperparameters(ignore=["transform", "target_transform"])
 
         self.root = Path(root)
         self.transform = transform

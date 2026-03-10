@@ -121,9 +121,6 @@ class BuiltinDataModule(BaseDataset):
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
         super().__init__()
-        self.save_hyperparameters(
-            ignore=["dataset_cls", "transform", "target_transform"]
-        )
 
         self.dataset_cls = _resolve_dataset_cls(dataset_cls)
         self.dataset_kwargs = {
