@@ -1,4 +1,4 @@
-"""See `TorchvisionDataModule` documentation."""
+"""See `BuiltinDataModule` documentation."""
 
 import inspect
 from typing import Any, Callable
@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import v2
 
-from ..base.dataset import BaseDataset
+from ..base import BaseDataset
 
 DEFAULT_TRAIN_DATALOADER_KWARGS = {
     "shuffle": True,
