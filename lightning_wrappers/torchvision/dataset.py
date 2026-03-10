@@ -154,12 +154,18 @@ class TorchvisionDataModule(BaseDataset):
 
         self.val_ratio, self.test_ratio = val_ratio, test_ratio
 
-        self.train_dataloader_kwargs = DEFAULT_TRAIN_DATALOADER_KWARGS
-        self.train_dataloader_kwargs.update(train_dataloader_kwargs or {})
-        self.val_dataloader_kwargs = DEFAULT_VAL_DATALOADER_KWARGS
-        self.val_dataloader_kwargs.update(val_dataloader_kwargs or {})
-        self.test_dataloader_kwargs = DEFAULT_TEST_DATALOADER_KWARGS
-        self.test_dataloader_kwargs.update(test_dataloader_kwargs or {})
+        self.train_dataloader_kwargs = {
+            **DEFAULT_TRAIN_DATALOADER_KWARGS,
+            **(train_dataloader_kwargs or {}),
+        }
+        self.val_dataloader_kwargs = {
+            **DEFAULT_VAL_DATALOADER_KWARGS,
+            **(val_dataloader_kwargs or {}),
+        }
+        self.test_dataloader_kwargs = {
+            **DEFAULT_TEST_DATALOADER_KWARGS,
+            **(test_dataloader_kwargs or {}),
+        }
 
         self.seed = seed
 
