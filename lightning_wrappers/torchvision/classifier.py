@@ -42,7 +42,9 @@ class TorchvisionClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    def _get_transform(self) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    def _get_transform(
+        self, *args: Any, **kwargs: Any
+    ) -> Callable[[dict[str, Any]], dict[str, Any]]:
         """
         Create an image processor from the model's weights.
 

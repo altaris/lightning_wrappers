@@ -48,7 +48,7 @@ class TimmClassifier(BaseClassifier):
         )
         self.save_hyperparameters()
 
-    def _get_transform(self) -> Callable | v2.Compose:
+    def _get_transform(self, *args: Any, **kwargs: Any) -> Callable:
         """
         Return the preprocessing transform for this model.
 
@@ -59,9 +59,9 @@ class TimmClassifier(BaseClassifier):
         try:
             data_cfg = timm.data.resolve_data_config(self.model.pretrained_cfg)
             transform = timm.data.create_transform(**data_cfg)
-            return transform
+            return transform  # type: ignore
         except Exception:
-            return v2.Compose(
+            transform = v2.Compose(
                 [
                     v2.Resize(256),
                     v2.CenterCrop(224),
@@ -73,3 +73,4 @@ class TimmClassifier(BaseClassifier):
                     ),
                 ]
             )
+            return transform  # type: ignore
