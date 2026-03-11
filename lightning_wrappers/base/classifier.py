@@ -67,7 +67,7 @@ class BaseClassifier(ABC, pl.LightningModule):
 
     def _step(
         self,
-        prefix: str,
+        stage: str,
         top1: Accuracy,
         top5: Accuracy | None,
         batch: tuple[torch.Tensor, torch.Tensor],
@@ -78,20 +78,18 @@ class BaseClassifier(ABC, pl.LightningModule):
         Args:
             prefix: Metric prefix (``"train"``, ``"val"``, or
                 ``"test"``).
-            top1: Top-1 accuracy metric.
-            top5: Top-5 accuracy metric, or ``None`` if
-                ``n_classes <= 5``.
+            top1: Top-1 accuracy metric object.
+            top5: Optional top-5 accuracy metric object.
             batch: A ``(images, labels)`` tuple.
         """
         x, y = batch
         logits = self(x)
         loss = nnf.cross_entropy(logits, y)
-        d: dict[str, torch.Tensor] = {
-            f"{prefix}/loss": loss,
-            f"{prefix}/top1": top1(logits, y),
-        }
-        if top5 is not None:
-            d[f"{prefix}/top5"] = top5(logits, y)
+        d: dict[str, torch.Tensor] = {f"{stage}/loss": loss}
+        if not y.is_floating_point():
+            d[f"{stage}/top1"] = top1(logits, y)
+            if top5 is not None:
+                d[f"{stage}/top5"] = top5(logits, y)
         self.log_dict(d, prog_bar=True, sync_dist=True)
         return loss
 
