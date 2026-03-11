@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable
+import logging
 
 import lightning as pl
 import torch
@@ -7,7 +8,6 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 from PIL import Image
 from torchmetrics import Accuracy
-
 from ..utils import replace_head
 
 
@@ -34,6 +34,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         n_classes: int,
         head_name: str | None = None,
         lr: float = 1e-3,
+        **kwargs: Any,
     ) -> None:
         """
         Args:
@@ -45,7 +46,9 @@ class BaseClassifier(ABC, pl.LightningModule):
             lr: Learning rate for the optimizer.
         """
         super().__init__()
-        self.save_hyperparameters(ignore=["model"])
+        self.save_hyperparameters(ignore=["model", *kwargs.keys()])
+        for k in kwargs:
+            logging.warning("Unknown argument '%s'", k)
 
         self.model = model
         if head_name is not None:
