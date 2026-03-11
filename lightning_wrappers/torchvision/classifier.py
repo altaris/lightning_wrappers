@@ -22,7 +22,7 @@ class TorchvisionClassifier(BaseClassifier):
         model_name: str,
         n_classes: int,
         head_name: str | None = None,
-        weights: Any = "DEFAULT",
+        pretrained: bool = True,
         **kwargs: Any,
     ) -> None:
         """
@@ -36,9 +36,14 @@ class TorchvisionClassifier(BaseClassifier):
             weights: Weights to use for the model.
                 Defaults to ``"DEFAULT"``.
         """
-        model = get_model(model_name, weights=weights)
+        model = get_model(
+            model_name, weights=("DEFAULT" if pretrained else None)
+        )
         super().__init__(
-            model=model, n_classes=n_classes, head_name=head_name, **kwargs
+            model=model,
+            n_classes=n_classes,
+            head_name=head_name,
+            **kwargs,
         )
         self.save_hyperparameters()
 
@@ -58,7 +63,7 @@ class TorchvisionClassifier(BaseClassifier):
         """
 
         model_name: str = self.hparams.model_name  # type: ignore
-        weights: str = self.hparams.weights  # type: ignore
+        weights: str = "DEFAULT" if self.hparams.pretrained else None  # type: ignore
         transform = v2.Compose(
             [
                 v2.RGB(),
