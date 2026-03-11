@@ -66,15 +66,20 @@ class TorchvisionClassifier(BaseClassifier):
             ]
         )
 
-        def _transform(batch: dict[str, Any]) -> dict[str, Any]:
-            return {
-                k: (
-                    [transform(img) for img in v]
-                    # TODO: pass image_key from DS ↓
-                    if k in ["img", "image", "jpg", "png"]
-                    else v
-                )
-                for k, v in batch.items()
-            }
+        def _transform(batch: Any) -> Any:
+            if isinstance(batch, dict):
+                return {
+                    k: (
+                        [transform(img) for img in v]
+                        # TODO: pass image_key from DS ↓
+                        if k in ["img", "image", "jpg", "png"]
+                        else v
+                    )
+                    for k, v in batch.items()
+                }
+            elif isinstance(batch, list):
+                return [transform(img) for img in batch]
+            else:
+                return transform(batch)
 
         return _transform
