@@ -62,7 +62,7 @@ class TorchvisionClassifier(BaseClassifier):
             get_model_weights("alexnet")["DEFAULT"].transforms()
         """
 
-        model_name: str = self.hparams.model_name  # type: ignore
+        model_name: str = self.hparams.model_name
         weights: str = "DEFAULT" if self.hparams.pretrained else None  # type: ignore
         transform = v2.Compose(
             [

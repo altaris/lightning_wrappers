@@ -86,9 +86,6 @@
         ]
 
 [dependency-groups]
-dev = [
-    "mypy>=1.19.1",
-]
 huggingface = [
     "datasets>=4.7.0",
 ]

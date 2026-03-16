@@ -152,7 +152,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         if x.ndim != 4:
             raise ValueError(f"Expected 4D tensor (B, C, H, W), got {x.ndim}D")
         x = x.to(self.device)
-        return self.model(x)  # type: ignore
+        return self.model(x)
 
     def get_transform(self, *args: Any, **kwargs: Any) -> Callable:
         """

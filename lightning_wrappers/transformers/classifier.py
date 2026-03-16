@@ -65,9 +65,7 @@ class TransformersClassifier(BaseClassifier):
             <https://huggingface.co/docs/transformers/v5.2.0/en/model_doc/auto#transformers.AutoImageProcessor>`_
         """
         hftr = AutoImageProcessor.from_pretrained(
-            self.hparams.model_name,  # type: ignore
-            *args,
-            **kwargs,
+            self.hparams.model_name, *args, **kwargs
         )
 
         def _transform(batch: dict[str, Any]) -> dict[str, Any]:

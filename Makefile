@@ -51,4 +51,4 @@ tests:
 
 .PHONY: typecheck
 typecheck:
-	$(UV_RUN) mypy -p $(SRC_PATH)
+	uvx mypy -p $(SRC_PATH)
