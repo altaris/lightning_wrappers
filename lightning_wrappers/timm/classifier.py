@@ -40,12 +40,7 @@ class TimmClassifier(BaseClassifier):
             pretrained=pretrained,
             num_classes=n_classes,
         )
-        super().__init__(
-            model=model,
-            n_classes=n_classes,
-            head_name=None,
-            **kwargs,
-        )
+        super().__init__(model=model, n_classes=n_classes, **kwargs)
         self.save_hyperparameters()
 
     def _get_transform(self, *args: Any, **kwargs: Any) -> Callable:
