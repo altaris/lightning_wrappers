@@ -62,8 +62,12 @@ class TorchvisionClassifier(BaseClassifier):
             get_model_weights("alexnet")["DEFAULT"].transforms()
         """
 
-        model_name: str = self.hparams.model_name
-        weights: str = "DEFAULT" if self.hparams.pretrained else None  # type: ignore
+        model_name = self.hparams.get("model_name")
+        if model_name is None:
+            raise ValueError("'model_name' missing from hparams")
+        weights: str | None = (
+            "DEFAULT" if self.hparams.get("pretrained", True) else None
+        )
         transform = v2.Compose(
             [
                 v2.RGB(),

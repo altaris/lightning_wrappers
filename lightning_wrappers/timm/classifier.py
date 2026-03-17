@@ -121,11 +121,11 @@ class TimmClassifier(BaseClassifier):
         """Configure AdamW optimizer, optionally with cosine schedule."""
         optimizer = create_optimizer_v2(
             self,
-            opt=self.hparams.optimizer,
-            lr=self.hparams.lr,
-            **(self.hparams.optimizer_kwargs or {}),
+            opt=self.hparams.get("optimizer", "adamw"),
+            lr=self.hparams.get("lr", 1e-3),
+            **(self.hparams.get("optimizer_kwargs") or {}),
         )
-        if self.hparams.scheduler:
+        if scheduler_name := self.hparams.get("scheduler"):
             from timm.scheduler import create_scheduler_v2
 
             kw = {
@@ -136,9 +136,9 @@ class TimmClassifier(BaseClassifier):
                 ),
                 "warmup_epochs": 2,
             }
-            kw.update(self.hparams.scheduler_kwargs or {})
+            kw.update(self.hparams.get("scheduler_kwargs") or {})
             scheduler, _ = create_scheduler_v2(
-                optimizer=optimizer, sched=self.hparams.scheduler, **kw
+                optimizer=optimizer, sched=scheduler_name, **kw
             )
             return [optimizer], [scheduler]
         else:

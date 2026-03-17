@@ -64,9 +64,10 @@ class TransformersClassifier(BaseClassifier):
             `AutoImageProcessor documentation
             <https://huggingface.co/docs/transformers/v5.2.0/en/model_doc/auto#transformers.AutoImageProcessor>`_
         """
-        hftr = AutoImageProcessor.from_pretrained(
-            self.hparams.model_name, *args, **kwargs
-        )
+        model_name = self.hparams.get("model_name")
+        if model_name is None:
+            raise ValueError("'model_name' missing from hparams")
+        hftr = AutoImageProcessor.from_pretrained(model_name, *args, **kwargs)
 
         def _transform(batch: dict[str, Any]) -> dict[str, Any]:
             return {

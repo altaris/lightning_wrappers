@@ -91,7 +91,9 @@ class BaseClassifier(ABC, pl.LightningModule):
         x, y = batch
         logits = self(x)
         loss = nnf.cross_entropy(
-            logits, y, label_smoothing=self.hparams.label_smoothing
+            logits,
+            y,
+            label_smoothing=self.hparams.get("label_smoothing", 0.0),
         )
         d: dict[str, torch.Tensor] = {f"{stage}/loss": loss}
         if not y.is_floating_point():
@@ -101,10 +103,12 @@ class BaseClassifier(ABC, pl.LightningModule):
         self.log_dict(d, prog_bar=True, sync_dist=True)
         return loss
 
-    def configure_optimizers(self) -> torch.optim.Optimizer:
-        """Configure optimizer (AdamW)."""
-        lr: float = self.hparams.lr  # type: ignore
-        return torch.optim.AdamW(self.parameters(), lr=lr)
+    def configure_optimizers(self) -> Any:
+        """Configure AdamW optimizer."""
+        optimizer = torch.optim.AdamW(
+            self.parameters(), lr=self.hparams.get("lr", 1e-3)
+        )
+        return optimizer
 
     def forward(
         self, x: torch.Tensor | Image.Image | list | dict
