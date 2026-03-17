@@ -1,6 +1,6 @@
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable
-import logging
 
 import lightning as pl
 import torch
@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as nnf
 from PIL import Image
 from torchmetrics import Accuracy
+
 from ..utils import replace_head
 
 
@@ -34,6 +35,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         n_classes: int,
         head_name: str | None = None,
         lr: float = 1e-3,
+        label_smoothing: float = 0.0,
         **kwargs: Any,
     ) -> None:
         """
@@ -44,6 +46,7 @@ class BaseClassifier(ABC, pl.LightningModule):
                 head submodule to replace. If ``None``, the head
                 is left unchanged.
             lr: Learning rate for the optimizer.
+            label_smoothing: Label smoothing factor for the loss.
         """
         super().__init__()
         self.save_hyperparameters(ignore=["model", *kwargs.keys()])
@@ -87,7 +90,9 @@ class BaseClassifier(ABC, pl.LightningModule):
         """
         x, y = batch
         logits = self(x)
-        loss = nnf.cross_entropy(logits, y)
+        loss = nnf.cross_entropy(
+            logits, y, label_smoothing=self.hparams.label_smoothing
+        )
         d: dict[str, torch.Tensor] = {f"{stage}/loss": loss}
         if not y.is_floating_point():
             d[f"{stage}/top1"] = top1(logits, y)
