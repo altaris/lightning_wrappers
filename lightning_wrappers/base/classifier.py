@@ -174,6 +174,21 @@ class BaseClassifier(ABC, pl.LightningModule):
             self._transform = self._get_transform(*args, **kwargs)
         return self._transform  # type: ignore
 
+    def predict_step(
+        self,
+        batch: tuple[torch.Tensor, torch.Tensor] | torch.Tensor,
+        *_: Any,
+        **__: Any,
+    ) -> torch.Tensor:
+        """
+        Run a single predict step.
+
+        Returns:
+            Logits of shape `(B, num_classes)`.
+        """
+        x = batch[0] if isinstance(batch, (tuple, list)) else batch
+        return self(x)
+
     def test_step(
         self,
         batch: tuple[torch.Tensor, torch.Tensor],
