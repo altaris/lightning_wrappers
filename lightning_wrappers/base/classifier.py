@@ -27,7 +27,7 @@ class BaseClassifier(ABC, pl.LightningModule):
     val_top5: Accuracy | None
     test_top1: Accuracy
     test_top5: Accuracy | None
-    _transform: Callable | None = None
+    _transform: Callable | None
 
     def __init__(
         self,
@@ -170,9 +170,9 @@ class BaseClassifier(ABC, pl.LightningModule):
         On first call, delegates to `_get_transform` and caches
         the result.
         """
-        if self._transform is None:
+        if not getattr(self, "_transform", None):
             self._transform = self._get_transform(*args, **kwargs)
-        return self._transform
+        return self._transform  # type: ignore
 
     def test_step(
         self,
