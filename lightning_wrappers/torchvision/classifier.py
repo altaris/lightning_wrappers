@@ -5,10 +5,10 @@ from typing import Any, Callable
 from torchvision.models import get_model, get_model_weights
 from torchvision.transforms import v2
 
-from ..base import BaseClassifier
+from ..torch import TorchClassifier
 
 
-class TorchvisionClassifier(BaseClassifier):
+class TorchvisionClassifier(TorchClassifier):
     """
     A torchvision classifier wrapped in a `LightningModule`.
 
@@ -40,12 +40,9 @@ class TorchvisionClassifier(BaseClassifier):
             model_name, weights=("DEFAULT" if pretrained else None)
         )
         super().__init__(
-            model=model,
-            n_classes=n_classes,
-            head_name=head_name,
-            **kwargs,
+            model=model, n_classes=n_classes, head_name=head_name, **kwargs
         )
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["model"])
 
     def _get_transform(
         self, *args: Any, **kwargs: Any

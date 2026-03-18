@@ -82,7 +82,7 @@ class BaseClassifier(ABC, pl.LightningModule):
         Shared train/val/test step.
 
         Args:
-            prefix: Metric prefix (``"train"``, ``"val"``, or
+            stage: Metric prefix (``"train"``, ``"val"``, or
                 ``"test"``).
             top1: Top-1 accuracy metric object.
             top5: Optional top-5 accuracy metric object.
