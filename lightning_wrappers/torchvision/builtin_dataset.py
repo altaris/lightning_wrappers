@@ -1,20 +1,18 @@
 """See `BuiltinDataModule` documentation."""
 
 import inspect
+from pathlib import Path
 from typing import Any, Callable
 
 import torch
 import torchvision.datasets
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import random_split
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import v2
 
-from ..base import (
-    DEFAULT_TEST_DATALOADER_KWARGS,
-    DEFAULT_TRAIN_DATALOADER_KWARGS,
-    DEFAULT_VAL_DATALOADER_KWARGS,
-    BaseDataset,
-)
+from ..base import BaseDataset
+
+DEFAULT_TORCHVISION_ROOT = Path.home() / ".torchvision" / "datasets"
 
 
 def _resolve_dataset_cls(
@@ -70,14 +68,8 @@ class BuiltinDataModule(BaseDataset):
     dataset_cls: Any
     dataset_kwargs: dict[str, Any]
     seed: int
-    test_dataset: Dataset
     test_ratio: float
-    train_dataset: Dataset
-    val_dataset: Dataset
     val_ratio: float
-    train_dataloader_kwargs: dict[str, Any]
-    val_dataloader_kwargs: dict[str, Any]
-    test_dataloader_kwargs: dict[str, Any]
 
     def __init__(
         self,
@@ -120,7 +112,11 @@ class BuiltinDataModule(BaseDataset):
                 `DataLoader`. Merged into
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
-        super().__init__()
+        super().__init__(
+            train_dataloader_kwargs=train_dataloader_kwargs,
+            val_dataloader_kwargs=val_dataloader_kwargs,
+            test_dataloader_kwargs=test_dataloader_kwargs,
+        )
 
         self.dataset_cls = _resolve_dataset_cls(dataset_cls)
         self.dataset_kwargs = {
@@ -135,26 +131,12 @@ class BuiltinDataModule(BaseDataset):
                 )
             ),
             "target_transform": target_transform,
-            "root": "~/.torchvision/datasets",
+            "root": DEFAULT_TORCHVISION_ROOT,
             "download": True,
         }
         self.dataset_kwargs.update(dataset_kwargs or {})
 
         self.val_ratio, self.test_ratio = val_ratio, test_ratio
-
-        self.train_dataloader_kwargs = {
-            **DEFAULT_TRAIN_DATALOADER_KWARGS,
-            **(train_dataloader_kwargs or {}),
-        }
-        self.val_dataloader_kwargs = {
-            **DEFAULT_VAL_DATALOADER_KWARGS,
-            **(val_dataloader_kwargs or {}),
-        }
-        self.test_dataloader_kwargs = {
-            **DEFAULT_TEST_DATALOADER_KWARGS,
-            **(test_dataloader_kwargs or {}),
-        }
-
         self.seed = seed
 
     def _detect_split_key(self) -> str | None:
@@ -226,15 +208,3 @@ class BuiltinDataModule(BaseDataset):
                 full_ds, [n_train, n_val, n_test], generator=rng
             )
             self.train_dataset, self.val_dataset, self.test_dataset = a, b, c
-
-    def test_dataloader(self) -> DataLoader:
-        """Return the test `DataLoader`."""
-        return DataLoader(self.test_dataset, **self.test_dataloader_kwargs)
-
-    def train_dataloader(self) -> DataLoader:
-        """Return the training `DataLoader`."""
-        return DataLoader(self.train_dataset, **self.train_dataloader_kwargs)
-
-    def val_dataloader(self) -> DataLoader:
-        """Return the validation `DataLoader`."""
-        return DataLoader(self.val_dataset, **self.val_dataloader_kwargs)

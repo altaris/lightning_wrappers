@@ -3,15 +3,9 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
-from ..base import (
-    DEFAULT_TEST_DATALOADER_KWARGS,
-    DEFAULT_TRAIN_DATALOADER_KWARGS,
-    DEFAULT_VAL_DATALOADER_KWARGS,
-    BaseDataset,
-)
+from ..base import BaseDataset
 
 
 class ImageFolderDataModule(BaseDataset):
@@ -42,9 +36,6 @@ class ImageFolderDataModule(BaseDataset):
     train_dataset: ImageFolder
     val_dataset: ImageFolder
     test_dataset: ImageFolder
-    train_dataloader_kwargs: dict[str, Any]
-    val_dataloader_kwargs: dict[str, Any]
-    test_dataloader_kwargs: dict[str, Any]
 
     def __init__(
         self,
@@ -77,7 +68,11 @@ class ImageFolderDataModule(BaseDataset):
                 `DataLoader`. Merged into
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
-        super().__init__()
+        super().__init__(
+            train_dataloader_kwargs=train_dataloader_kwargs,
+            val_dataloader_kwargs=val_dataloader_kwargs,
+            test_dataloader_kwargs=test_dataloader_kwargs,
+        )
 
         self.root = Path(root)
         self.transform = transform
@@ -85,19 +80,6 @@ class ImageFolderDataModule(BaseDataset):
         self.train_dir = train_dir
         self.val_dir = val_dir
         self.test_dir = test_dir
-
-        self.train_dataloader_kwargs = {
-            **DEFAULT_TRAIN_DATALOADER_KWARGS,
-            **(train_dataloader_kwargs or {}),
-        }
-        self.val_dataloader_kwargs = {
-            **DEFAULT_VAL_DATALOADER_KWARGS,
-            **(val_dataloader_kwargs or {}),
-        }
-        self.test_dataloader_kwargs = {
-            **DEFAULT_TEST_DATALOADER_KWARGS,
-            **(test_dataloader_kwargs or {}),
-        }
 
     def setup(self, stage: str | None = None) -> None:
         """
@@ -114,15 +96,3 @@ class ImageFolderDataModule(BaseDataset):
         self.train_dataset = ImageFolder(self.root / self.train_dir, **kwargs)
         self.val_dataset = ImageFolder(self.root / self.val_dir, **kwargs)
         self.test_dataset = ImageFolder(self.root / self.test_dir, **kwargs)
-
-    def train_dataloader(self) -> DataLoader:
-        """Return the training `DataLoader`."""
-        return DataLoader(self.train_dataset, **self.train_dataloader_kwargs)
-
-    def val_dataloader(self) -> DataLoader:
-        """Return the validation `DataLoader`."""
-        return DataLoader(self.val_dataset, **self.val_dataloader_kwargs)
-
-    def test_dataloader(self) -> DataLoader:
-        """Return the test `DataLoader`."""
-        return DataLoader(self.test_dataset, **self.test_dataloader_kwargs)

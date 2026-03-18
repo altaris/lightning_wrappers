@@ -12,14 +12,8 @@ from datasets import (
     concatenate_datasets,
     load_dataset,
 )
-from torch.utils.data import DataLoader
 
-from ..base import (
-    DEFAULT_TEST_DATALOADER_KWARGS,
-    DEFAULT_TRAIN_DATALOADER_KWARGS,
-    DEFAULT_VAL_DATALOADER_KWARGS,
-    BaseDataset,
-)
+from ..base import BaseDataset
 
 DEFAULT_CACHE_DIR = Path.home() / ".huggingface" / "datasets"
 """
@@ -67,9 +61,6 @@ class HuggingFaceDataset(BaseDataset):
     train_dataset: Dataset
     val_dataset: Dataset
     val_ratio: float
-    train_dataloader_kwargs: dict[str, Any]
-    val_dataloader_kwargs: dict[str, Any]
-    test_dataloader_kwargs: dict[str, Any]
 
     def __init__(
         self,
@@ -111,7 +102,11 @@ class HuggingFaceDataset(BaseDataset):
                 `DataLoader`. Merged into
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
         """
-        super().__init__()
+        super().__init__(
+            train_dataloader_kwargs=train_dataloader_kwargs,
+            val_dataloader_kwargs=val_dataloader_kwargs,
+            test_dataloader_kwargs=test_dataloader_kwargs,
+        )
 
         self.path, self.name = path, name
         self.val_ratio, self.test_ratio = val_ratio, test_ratio
@@ -119,19 +114,6 @@ class HuggingFaceDataset(BaseDataset):
         self.transform = transform
         self.load_dataset_kwargs = load_dataset_kwargs or {}
         self.load_dataset_kwargs.setdefault("cache_dir", DEFAULT_CACHE_DIR)
-
-        self.train_dataloader_kwargs = {
-            **DEFAULT_TRAIN_DATALOADER_KWARGS,
-            **(train_dataloader_kwargs or {}),
-        }
-        self.val_dataloader_kwargs = {
-            **DEFAULT_VAL_DATALOADER_KWARGS,
-            **(val_dataloader_kwargs or {}),
-        }
-        self.test_dataloader_kwargs = {
-            **DEFAULT_TEST_DATALOADER_KWARGS,
-            **(test_dataloader_kwargs or {}),
-        }
 
     def _check_image_classification(self, features: Features) -> None:
         """
@@ -224,24 +206,3 @@ class HuggingFaceDataset(BaseDataset):
         self.train_dataset = self._wrap(train)
         self.val_dataset = self._wrap(val)
         self.test_dataset = self._wrap(test)
-
-    def train_dataloader(self) -> DataLoader:
-        """Return the training `DataLoader`."""
-        return DataLoader(
-            self.train_dataset,
-            **self.train_dataloader_kwargs,
-        )
-
-    def val_dataloader(self) -> DataLoader:
-        """Return the validation `DataLoader`."""
-        return DataLoader(
-            self.val_dataset,
-            **self.val_dataloader_kwargs,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """Return the test `DataLoader`."""
-        return DataLoader(
-            self.test_dataset,
-            **self.test_dataloader_kwargs,
-        )
