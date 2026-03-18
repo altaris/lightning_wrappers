@@ -32,6 +32,7 @@ class BaseDataModule(pl.LightningDataModule):
     `test_dataset` in their `setup` method.
     """
 
+    cutmix_alpha: float
     mixup_alpha: float
     train_dataset: Dataset
     val_dataset: Dataset
@@ -46,6 +47,7 @@ class BaseDataModule(pl.LightningDataModule):
         val_dataloader_kwargs: dict[str, Any] | None = None,
         test_dataloader_kwargs: dict[str, Any] | None = None,
         mixup_alpha: float = 0.0,
+        cutmix_alpha: float = 0.0,
     ) -> None:
         """
         Args:
@@ -61,6 +63,12 @@ class BaseDataModule(pl.LightningDataModule):
             mixup_alpha: Alpha parameter for `MixUp`
                 augmentation on the training dataloader. Set to
                 ``0.0`` (default) to disable.
+            cutmix_alpha: Alpha parameter for `CutMix`
+                augmentation on the training dataloader. Set to
+                ``0.0`` (default) to disable. If both
+                `mixup_alpha` and `cutmix_alpha` are non-zero,
+                one is chosen at random for each batch via
+                `RandomChoice`.
         """
         super().__init__()
         self.train_dataloader_kwargs = {
@@ -76,6 +84,7 @@ class BaseDataModule(pl.LightningDataModule):
             **(test_dataloader_kwargs or {}),
         }
         self.mixup_alpha = mixup_alpha
+        self.cutmix_alpha = cutmix_alpha
 
     @property
     @abc.abstractmethod
@@ -87,15 +96,34 @@ class BaseDataModule(pl.LightningDataModule):
             Will call `setup("train")`
         """
 
+    def _build_collate_transform(self) -> v2.Transform | None:
+        """
+        Build a batch-level augmentation transform from
+        `mixup_alpha` and `cutmix_alpha`.
+
+        Returns:
+            A `MixUp`, `CutMix`, or `RandomChoice` transform,
+            or ``None`` if both are disabled.
+        """
+        nc = self.num_classes
+        transforms: list[v2.Transform] = []
+        if self.mixup_alpha > 0.0:
+            transforms.append(v2.MixUp(alpha=self.mixup_alpha, num_classes=nc))
+        if self.cutmix_alpha > 0.0:
+            transforms.append(
+                v2.CutMix(alpha=self.cutmix_alpha, num_classes=nc)
+            )
+        if not transforms:
+            return None
+        if len(transforms) == 1:
+            return transforms[0]
+        return v2.RandomChoice(transforms)
+
     def train_dataloader(self) -> DataLoader:
         """Return the training `DataLoader`."""
         kwargs = dict(self.train_dataloader_kwargs)
-        if self.mixup_alpha > 0.0:
-            mixup = v2.MixUp(
-                alpha=self.mixup_alpha,
-                num_classes=self.num_classes,
-            )
-            kwargs["collate_fn"] = lambda batch: mixup(*default_collate(batch))
+        if (aug := self._build_collate_transform()) is not None:
+            kwargs["collate_fn"] = lambda batch: aug(*default_collate(batch))
         return DataLoader(self.train_dataset, **kwargs)
 
     def val_dataloader(self) -> DataLoader:

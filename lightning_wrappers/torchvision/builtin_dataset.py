@@ -85,6 +85,7 @@ class BuiltinDataModule(BaseDataModule):
         val_dataloader_kwargs: dict[str, Any] | None = None,
         test_dataloader_kwargs: dict[str, Any] | None = None,
         mixup_alpha: float = 0.0,
+        cutmix_alpha: float = 0.0,
     ) -> None:
         """
         Args:
@@ -120,12 +121,15 @@ class BuiltinDataModule(BaseDataModule):
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
             mixup_alpha: Alpha parameter for `MixUp`
                 augmentation. ``0.0`` disables it.
+            cutmix_alpha: Alpha parameter for `CutMix`
+                augmentation. ``0.0`` disables it.
         """
         super().__init__(
             train_dataloader_kwargs=train_dataloader_kwargs,
             val_dataloader_kwargs=val_dataloader_kwargs,
             test_dataloader_kwargs=test_dataloader_kwargs,
             mixup_alpha=mixup_alpha,
+            cutmix_alpha=cutmix_alpha,
         )
 
         default_transform = v2.Compose(
