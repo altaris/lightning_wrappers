@@ -69,7 +69,9 @@ class HuggingFaceDataModule(BaseDataModule):
         val_ratio: float = 0.2,
         test_ratio: float = 0.1,
         seed: int = 0,
-        transform: Callable | None = None,
+        train_transform: Callable | None = None,
+        val_transform: Callable | None = None,
+        test_transform: Callable | None = None,
         load_dataset_kwargs: dict[str, Any] | None = None,
         train_dataloader_kwargs: dict[str, Any] | None = None,
         val_dataloader_kwargs: dict[str, Any] | None = None,
@@ -89,8 +91,12 @@ class HuggingFaceDataModule(BaseDataModule):
             test_ratio: Fraction of data used for testing. Only
                 used when the dataset has no built-in splits.
             seed: Random seed for reproducible splits.
-            transform: An optional callable applied to each
-                sample dict via `Dataset.set_transform`.
+            train_transform: Transform applied to training
+                samples via `Dataset.set_transform`.
+            val_transform: Transform applied to validation
+                samples via `Dataset.set_transform`.
+            test_transform: Transform applied to test samples
+                via `Dataset.set_transform`.
             load_dataset_kwargs: Extra keyword arguments
                 forwarded to `datasets.load_dataset`.
             train_dataloader_kwargs: Overrides for the training
@@ -115,7 +121,9 @@ class HuggingFaceDataModule(BaseDataModule):
         self.path, self.name = path, name
         self.val_ratio, self.test_ratio = val_ratio, test_ratio
         self.seed = seed
-        self.transform = transform
+        self.train_transform = train_transform
+        self.val_transform = val_transform
+        self.test_transform = test_transform
         self.load_dataset_kwargs = load_dataset_kwargs or {}
         self.load_dataset_kwargs.setdefault("cache_dir", DEFAULT_CACHE_DIR)
 
@@ -151,13 +159,16 @@ class HuggingFaceDataModule(BaseDataModule):
                 f" Available features: {dict(features)}"
             )
 
-    def _wrap(self, ds: Dataset) -> Dataset:
+    @staticmethod
+    def _wrap(
+        ds: Dataset,
+        transform: Callable | None,
+    ) -> Dataset:
         """
-        Apply `transform` to a dataset by setting its
-        ``set_transform`` if a transform is provided.
+        Apply a transform to a dataset via ``set_transform``.
         """
-        if self.transform is not None:
-            ds.set_transform(self.transform)
+        if transform is not None:
+            ds.set_transform(transform)
         return ds
 
     def _hf_split(self, ds: Dataset, ratio: float) -> tuple[Dataset, Dataset]:
@@ -188,14 +199,20 @@ class HuggingFaceDataModule(BaseDataModule):
         if isinstance(raw, DatasetDict):
             if train_ds := raw.get("train"):
                 if "validation" in raw:  # Use existing val. split if available
-                    self.train_dataset = self._wrap(train_ds)
-                    self.val_dataset = self._wrap(raw["validation"])
+                    self.train_dataset = self._wrap(
+                        train_ds, self.train_transform
+                    )
+                    self.val_dataset = self._wrap(
+                        raw["validation"], self.val_transform
+                    )
                 else:
                     main, val = self._hf_split(train_ds, self.val_ratio)
-                    self.train_dataset = self._wrap(main)
-                    self.val_dataset = self._wrap(val)
+                    self.train_dataset = self._wrap(main, self.train_transform)
+                    self.val_dataset = self._wrap(val, self.val_transform)
                 if "test" in raw:  # Use existing test split if available
-                    self.test_dataset = self._wrap(raw["test"])
+                    self.test_dataset = self._wrap(
+                        raw["test"], self.test_transform
+                    )
                 else:
                     self.test_dataset = self.val_dataset
             else:
@@ -216,6 +233,6 @@ class HuggingFaceDataModule(BaseDataModule):
         # for the remaining data
         adjusted_val = self.val_ratio / (1.0 - self.test_ratio)
         train, val = self._hf_split(main, adjusted_val)
-        self.train_dataset = self._wrap(train)
-        self.val_dataset = self._wrap(val)
-        self.test_dataset = self._wrap(test)
+        self.train_dataset = self._wrap(train, self.train_transform)
+        self.val_dataset = self._wrap(val, self.val_transform)
+        self.test_dataset = self._wrap(test, self.test_transform)

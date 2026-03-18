@@ -77,8 +77,9 @@ class BuiltinDataModule(BaseDataModule):
         val_ratio: float = 0.2,
         test_ratio: float = 0.1,
         seed: int = 0,
-        transform: Callable | None = None,
-        target_transform: Callable | None = None,
+        train_transform: Callable | None = None,
+        val_transform: Callable | None = None,
+        test_transform: Callable | None = None,
         dataset_kwargs: dict[str, Any] | None = None,
         train_dataloader_kwargs: dict[str, Any] | None = None,
         val_dataloader_kwargs: dict[str, Any] | None = None,
@@ -95,14 +96,19 @@ class BuiltinDataModule(BaseDataModule):
                 used when the dataset has no built-in split
                 mechanism.
             seed: Random seed for reproducible splits.
-            transform: Transform applied to images. Defaults to
-                resize to 500x500 and convert to float32.
-            target_transform: Transform applied to targets.
+            train_transform: Transform applied to training
+                images. Defaults to resize to 500x500 and
+                convert to float32.
+            val_transform: Transform applied to validation
+                images. Defaults to resize to 500x500 and
+                convert to float32.
+            test_transform: Transform applied to test images.
+                Defaults to resize to 500x500 and convert to
+                float32.
             dataset_kwargs: Extra keyword arguments forwarded
                 to the dataset constructor (e.g.
                 ``{"root": "/data"}``). These are merged into
-                the defaults (``transform``,
-                ``target_transform``, ``root``, ``download``).
+                the defaults (``root``, ``download``).
             train_dataloader_kwargs: Overrides for the training
                 `DataLoader`. Merged into
                 `DEFAULT_TRAIN_DATALOADER_KWARGS`.
@@ -122,19 +128,18 @@ class BuiltinDataModule(BaseDataModule):
             mixup_alpha=mixup_alpha,
         )
 
+        default_transform = v2.Compose(
+            [
+                v2.ToImage(),
+                v2.Resize((500, 500)),
+                v2.ToDtype(torch.float32, scale=True),
+            ]
+        )
         self.dataset_cls = _resolve_dataset_cls(dataset_cls)
-        self.dataset_kwargs = {
-            "transform": (
-                transform
-                or v2.Compose(
-                    [
-                        v2.ToImage(),
-                        v2.Resize((500, 500)),
-                        v2.ToDtype(torch.float32, scale=True),
-                    ]
-                )
-            ),
-            "target_transform": target_transform,
+        self.train_transform = train_transform or default_transform
+        self.val_transform = val_transform or default_transform
+        self.test_transform = test_transform or default_transform
+        self.dataset_kwargs: dict[str, Any] = {
             "root": DEFAULT_TORCHVISION_ROOT,
             "download": True,
         }
@@ -166,21 +171,32 @@ class BuiltinDataModule(BaseDataModule):
                 return key
         return None
 
+    def _make_kwargs(
+        self,
+        transform: Callable,
+    ) -> dict[str, Any]:
+        """
+        Build constructor kwargs for the dataset class,
+        merging the given transform with `dataset_kwargs`.
+        """
+        return {**self.dataset_kwargs, "transform": transform}
+
     def prepare_data(self) -> None:
         """
         Download the dataset if applicable.
 
         Called by Lightning on a single process before `setup`.
         """
+        kwargs = self._make_kwargs(self.train_transform)
         split_key = self._detect_split_key()
         if split_key == "train":
-            self.dataset_cls(**self.dataset_kwargs, train=True)
-            self.dataset_cls(**self.dataset_kwargs, train=False)
+            self.dataset_cls(**kwargs, train=True)
+            self.dataset_cls(**kwargs, train=False)
         elif split_key == "split":
-            self.dataset_cls(**self.dataset_kwargs, split="train")
-            self.dataset_cls(**self.dataset_kwargs, split="test")
+            self.dataset_cls(**kwargs, split="train")
+            self.dataset_cls(**kwargs, split="test")
         else:
-            self.dataset_cls(**self.dataset_kwargs)
+            self.dataset_cls(**kwargs)
 
     def setup(self, stage: str | None = None) -> None:
         """
@@ -190,34 +206,39 @@ class BuiltinDataModule(BaseDataModule):
         The ``stage`` argument is accepted for Lightning
         compatibility but ignored — all splits are always created.
         """
+        train_kw = self._make_kwargs(self.train_transform)
+        test_kw = self._make_kwargs(self.test_transform)
         split_key = self._detect_split_key()
         rng = torch.Generator().manual_seed(self.seed)
         if split_key == "train":
-            full_train = self.dataset_cls(**self.dataset_kwargs, train=True)
+            full_train = self.dataset_cls(**train_kw, train=True)
             n_val = int(len(full_train) * self.val_ratio)
             n_train = len(full_train) - n_val
             self.train_dataset, self.val_dataset = random_split(
                 full_train, [n_train, n_val], generator=rng
             )
-            self.test_dataset = self.dataset_cls(
-                **self.dataset_kwargs, train=False
-            )
+            self.test_dataset = self.dataset_cls(**test_kw, train=False)
         elif split_key == "split":
-            full_train = self.dataset_cls(**self.dataset_kwargs, split="train")
+            full_train = self.dataset_cls(**train_kw, split="train")
             n_val = int(len(full_train) * self.val_ratio)
             n_train = len(full_train) - n_val
             self.train_dataset, self.val_dataset = random_split(
                 full_train, [n_train, n_val], generator=rng
             )
-            self.test_dataset = self.dataset_cls(
-                **self.dataset_kwargs, split="test"
-            )
+            self.test_dataset = self.dataset_cls(**test_kw, split="test")
         else:
-            full_ds = self.dataset_cls(**self.dataset_kwargs)
+            full_ds = self.dataset_cls(**train_kw)
             n = len(full_ds)
-            n_test, n_val = int(n * self.test_ratio), int(n * self.val_ratio)
+            n_test, n_val = (
+                int(n * self.test_ratio),
+                int(n * self.val_ratio),
+            )
             n_train = n - n_val - n_test
             a, b, c = random_split(
                 full_ds, [n_train, n_val, n_test], generator=rng
             )
-            self.train_dataset, self.val_dataset, self.test_dataset = a, b, c
+            self.train_dataset, self.val_dataset, self.test_dataset = (
+                a,
+                b,
+                c,
+            )

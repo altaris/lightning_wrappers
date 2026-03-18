@@ -40,8 +40,9 @@ class ImageFolderDataModule(BaseDataModule):
     def __init__(
         self,
         root: str | Path,
-        transform: Callable | None = None,
-        target_transform: Callable | None = None,
+        train_transform: Callable | None = None,
+        val_transform: Callable | None = None,
+        test_transform: Callable | None = None,
         train_dir: str = "train",
         val_dir: str = "val",
         test_dir: str = "test",
@@ -54,8 +55,11 @@ class ImageFolderDataModule(BaseDataModule):
         Args:
             root: Path to the dataset root directory containing
                 the split subdirectories.
-            transform: Transform applied to images.
-            target_transform: Transform applied to targets.
+            train_transform: Transform applied to training
+                images.
+            val_transform: Transform applied to validation
+                images.
+            test_transform: Transform applied to test images.
             train_dir: Name of the training split subdirectory.
             val_dir: Name of the validation split subdirectory.
             test_dir: Name of the test split subdirectory.
@@ -79,8 +83,9 @@ class ImageFolderDataModule(BaseDataModule):
         )
 
         self.root = Path(root)
-        self.transform = transform
-        self.target_transform = target_transform
+        self.train_transform = train_transform
+        self.val_transform = val_transform
+        self.test_transform = test_transform
         self.train_dir = train_dir
         self.val_dir = val_dir
         self.test_dir = test_dir
@@ -99,10 +104,15 @@ class ImageFolderDataModule(BaseDataModule):
         The ``stage`` argument is accepted for Lightning
         compatibility but ignored — all splits are always created.
         """
-        kwargs: dict[str, Any] = {
-            "transform": self.transform,
-            "target_transform": self.target_transform,
-        }
-        self.train_dataset = ImageFolder(self.root / self.train_dir, **kwargs)
-        self.val_dataset = ImageFolder(self.root / self.val_dir, **kwargs)
-        self.test_dataset = ImageFolder(self.root / self.test_dir, **kwargs)
+        self.train_dataset = ImageFolder(
+            self.root / self.train_dir,
+            transform=self.train_transform,
+        )
+        self.val_dataset = ImageFolder(
+            self.root / self.val_dir,
+            transform=self.val_transform,
+        )
+        self.test_dataset = ImageFolder(
+            self.root / self.test_dir,
+            transform=self.test_transform,
+        )
