@@ -4,7 +4,8 @@ import abc
 from typing import Any
 
 import lightning as pl
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, default_collate
+from torchvision.transforms import v2
 
 DEFAULT_TRAIN_DATALOADER_KWARGS = {
     "shuffle": True,
@@ -31,6 +32,7 @@ class BaseDataset(pl.LightningDataModule):
     `test_dataset` in their `setup` method.
     """
 
+    mixup_alpha: float
     train_dataset: Dataset
     val_dataset: Dataset
     test_dataset: Dataset
@@ -43,6 +45,7 @@ class BaseDataset(pl.LightningDataModule):
         train_dataloader_kwargs: dict[str, Any] | None = None,
         val_dataloader_kwargs: dict[str, Any] | None = None,
         test_dataloader_kwargs: dict[str, Any] | None = None,
+        mixup_alpha: float = 0.0,
     ) -> None:
         """
         Args:
@@ -55,6 +58,9 @@ class BaseDataset(pl.LightningDataModule):
             test_dataloader_kwargs: Overrides for the test
                 `DataLoader`. Merged into
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
+            mixup_alpha: Alpha parameter for `MixUp`
+                augmentation on the training dataloader. Set to
+                ``0.0`` (default) to disable.
         """
         super().__init__()
         self.train_dataloader_kwargs = {
@@ -69,6 +75,7 @@ class BaseDataset(pl.LightningDataModule):
             **DEFAULT_TEST_DATALOADER_KWARGS,
             **(test_dataloader_kwargs or {}),
         }
+        self.mixup_alpha = mixup_alpha
 
     @property
     @abc.abstractmethod
@@ -82,7 +89,14 @@ class BaseDataset(pl.LightningDataModule):
 
     def train_dataloader(self) -> DataLoader:
         """Return the training `DataLoader`."""
-        return DataLoader(self.train_dataset, **self.train_dataloader_kwargs)
+        kwargs = dict(self.train_dataloader_kwargs)
+        if self.mixup_alpha > 0.0:
+            mixup = v2.MixUp(
+                alpha=self.mixup_alpha,
+                num_classes=self.num_classes,
+            )
+            kwargs["collate_fn"] = lambda batch: mixup(*default_collate(batch))
+        return DataLoader(self.train_dataset, **kwargs)
 
     def val_dataloader(self) -> DataLoader:
         """Return the validation `DataLoader`."""

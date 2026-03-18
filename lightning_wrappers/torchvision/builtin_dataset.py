@@ -83,6 +83,7 @@ class BuiltinDataModule(BaseDataset):
         train_dataloader_kwargs: dict[str, Any] | None = None,
         val_dataloader_kwargs: dict[str, Any] | None = None,
         test_dataloader_kwargs: dict[str, Any] | None = None,
+        mixup_alpha: float = 0.0,
     ) -> None:
         """
         Args:
@@ -111,11 +112,14 @@ class BuiltinDataModule(BaseDataset):
             test_dataloader_kwargs: Overrides for the test
                 `DataLoader`. Merged into
                 `DEFAULT_TEST_DATALOADER_KWARGS`.
+            mixup_alpha: Alpha parameter for `MixUp`
+                augmentation. ``0.0`` disables it.
         """
         super().__init__(
             train_dataloader_kwargs=train_dataloader_kwargs,
             val_dataloader_kwargs=val_dataloader_kwargs,
             test_dataloader_kwargs=test_dataloader_kwargs,
+            mixup_alpha=mixup_alpha,
         )
 
         self.dataset_cls = _resolve_dataset_cls(dataset_cls)
