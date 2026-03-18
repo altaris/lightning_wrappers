@@ -81,6 +81,12 @@ class ImageFolderDataModule(BaseDataset):
         self.val_dir = val_dir
         self.test_dir = test_dir
 
+    @property
+    def num_classes(self) -> int:
+        """Return the number of classes in the dataset."""
+        self.setup("train")
+        return len(self.train_dataset.classes)
+
     def setup(self, stage: str | None = None) -> None:
         """
         Create train/val/test datasets from the split

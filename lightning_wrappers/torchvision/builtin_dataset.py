@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 import torch
 import torchvision.datasets
-from torch.utils.data import random_split
+from torch.utils.data import Subset, random_split
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import v2
 
@@ -138,6 +138,15 @@ class BuiltinDataModule(BaseDataset):
 
         self.val_ratio, self.test_ratio = val_ratio, test_ratio
         self.seed = seed
+
+    @property
+    def num_classes(self) -> int:
+        """Return the number of classes in the dataset."""
+        self.setup("train")
+        ds = self.train_dataset
+        if isinstance(ds, Subset):
+            ds = ds.dataset
+        return len(ds.classes)
 
     def _detect_split_key(self) -> str | None:
         """

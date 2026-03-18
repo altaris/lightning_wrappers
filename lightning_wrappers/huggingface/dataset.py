@@ -115,6 +115,15 @@ class HuggingFaceDataset(BaseDataset):
         self.load_dataset_kwargs = load_dataset_kwargs or {}
         self.load_dataset_kwargs.setdefault("cache_dir", DEFAULT_CACHE_DIR)
 
+    @property
+    def num_classes(self) -> int:
+        """Return the number of classes in the dataset."""
+        self.setup("train")
+        for f in self.train_dataset.features.values():
+            if isinstance(f, ClassLabel):
+                return int(f.num_classes)
+        raise ValueError(f"Dataset {self.path!r} has no ClassLabel feature.")
+
     def _check_image_classification(self, features: Features) -> None:
         """
         Validate that the dataset features contain at least one

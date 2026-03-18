@@ -1,5 +1,6 @@
 """See `BaseDataset` documentation."""
 
+import abc
 from typing import Any
 
 import lightning as pl
@@ -68,6 +69,16 @@ class BaseDataset(pl.LightningDataModule):
             **DEFAULT_TEST_DATALOADER_KWARGS,
             **(test_dataloader_kwargs or {}),
         }
+
+    @property
+    @abc.abstractmethod
+    def num_classes(self) -> int:
+        """
+        Return the number of classes in the dataset.
+
+        Warning:
+            Will call `setup("train")`
+        """
 
     def train_dataloader(self) -> DataLoader:
         """Return the training `DataLoader`."""
