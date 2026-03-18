@@ -1,3 +1,3 @@
-from .dataset import HuggingFaceDataset
+from .dataset import HuggingFaceDataModule
 
-__all__ = ["HuggingFaceDataset"]
+__all__ = ["HuggingFaceDataModule"]

@@ -10,7 +10,7 @@ from torch.utils.data import Subset, random_split
 from torchvision.datasets import VisionDataset
 from torchvision.transforms import v2
 
-from ..base import BaseDataset
+from ..base import BaseDataModule
 
 DEFAULT_TORCHVISION_ROOT = Path.home() / ".torchvision" / "datasets"
 
@@ -36,7 +36,7 @@ def _resolve_dataset_cls(
     return dataset_cls
 
 
-class BuiltinDataModule(BaseDataset):
+class BuiltinDataModule(BaseDataModule):
     """
     A Lightning DataModule wrapping a `torchvision.datasets` class.
 

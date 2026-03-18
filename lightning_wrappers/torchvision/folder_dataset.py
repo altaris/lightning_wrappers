@@ -5,10 +5,10 @@ from typing import Any, Callable
 
 from torchvision.datasets import ImageFolder
 
-from ..base import BaseDataset
+from ..base import BaseDataModule
 
 
-class ImageFolderDataModule(BaseDataset):
+class ImageFolderDataModule(BaseDataModule):
     """
     A Lightning DataModule for datasets in ImageFolder layout with
     pre-existing splits::

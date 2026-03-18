@@ -1,4 +1,4 @@
-"""See `HuggingFaceDataset` documentation."""
+"""See `HuggingFaceDataModule` documentation."""
 
 from pathlib import Path
 from typing import Any, Callable
@@ -13,7 +13,7 @@ from datasets import (
     load_dataset,
 )
 
-from ..base import BaseDataset
+from ..base import BaseDataModule
 
 DEFAULT_CACHE_DIR = Path.home() / ".huggingface" / "datasets"
 """
@@ -24,7 +24,7 @@ See also:
 """
 
 
-class HuggingFaceDataset(BaseDataset):
+class HuggingFaceDataModule(BaseDataModule):
     """
     A Lightning DataModule wrapping a HuggingFace ``datasets``
     dataset.
@@ -44,8 +44,8 @@ class HuggingFaceDataset(BaseDataset):
 
     Example::
 
-        dm = HuggingFaceDataset("cifar10")
-        dm = HuggingFaceDataset(
+        dm = HuggingFaceDataModule("cifar10")
+        dm = HuggingFaceDataModule(
             "imagenet-1k",
             load_dataset_kwargs={"trust_remote_code": True},
         )

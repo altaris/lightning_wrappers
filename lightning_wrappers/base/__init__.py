@@ -3,12 +3,12 @@ from .dataset import (
     DEFAULT_TEST_DATALOADER_KWARGS,
     DEFAULT_TRAIN_DATALOADER_KWARGS,
     DEFAULT_VAL_DATALOADER_KWARGS,
-    BaseDataset,
+    BaseDataModule,
 )
 
 __all__ = [
     "BaseClassifier",
-    "BaseDataset",
+    "BaseDataModule",
     "DEFAULT_TRAIN_DATALOADER_KWARGS",
     "DEFAULT_VAL_DATALOADER_KWARGS",
     "DEFAULT_TEST_DATALOADER_KWARGS",

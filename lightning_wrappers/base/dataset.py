@@ -1,4 +1,4 @@
-"""See `BaseDataset` documentation."""
+"""See `BaseDataModule` documentation."""
 
 import abc
 from typing import Any
@@ -23,7 +23,7 @@ DEFAULT_TEST_DATALOADER_KWARGS = {
 }
 
 
-class BaseDataset(pl.LightningDataModule):
+class BaseDataModule(pl.LightningDataModule):
     """
     Base Lightning DataModule providing common dataloader kwargs
     handling and dataloader methods.
