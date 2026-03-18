@@ -73,7 +73,7 @@ class TimmClassifier(BaseClassifier):
         Return the preprocessing transform for this model.
 
         Falls back to standard ImageNet preprocessing (resize to
-        224×224, normalize with ImageNet statistics) if the
+        400×400, normalize with ImageNet statistics) if the
         model's pretrained config cannot be resolved.
         """
         from timm.data import create_transform, resolve_data_config
@@ -81,12 +81,10 @@ class TimmClassifier(BaseClassifier):
         try:
             data_cfg = resolve_data_config(self.model.pretrained_cfg)
             transform = create_transform(**data_cfg)
-            return transform  # type: ignore
         except Exception:
             transform = v2.Compose(
                 [
-                    v2.Resize(256),
-                    v2.CenterCrop(224),
+                    v2.Resize((400, 400)),
                     v2.ToImage(),
                     v2.ToDtype(torch.float32, scale=True),
                     v2.Normalize(
@@ -95,7 +93,7 @@ class TimmClassifier(BaseClassifier):
                     ),
                 ]
             )
-            return transform  # type: ignore
+        return transform  # type: ignore
 
     def lr_scheduler_step(
         self,
