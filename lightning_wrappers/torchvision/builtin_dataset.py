@@ -171,23 +171,16 @@ class BuiltinDataModule(BaseDataModule):
                 return key
         return None
 
-    def _make_kwargs(
-        self,
-        transform: Callable,
-    ) -> dict[str, Any]:
-        """
-        Build constructor kwargs for the dataset class,
-        merging the given transform with `dataset_kwargs`.
-        """
-        return {**self.dataset_kwargs, "transform": transform}
-
     def prepare_data(self) -> None:
         """
         Download the dataset if applicable.
 
         Called by Lightning on a single process before `setup`.
         """
-        kwargs = self._make_kwargs(self.train_transform)
+        kwargs = {
+            **self.dataset_kwargs,
+            "transform": self.train_transform,
+        }
         split_key = self._detect_split_key()
         if split_key == "train":
             self.dataset_cls(**kwargs, train=True)
@@ -206,8 +199,14 @@ class BuiltinDataModule(BaseDataModule):
         The ``stage`` argument is accepted for Lightning
         compatibility but ignored — all splits are always created.
         """
-        train_kw = self._make_kwargs(self.train_transform)
-        test_kw = self._make_kwargs(self.test_transform)
+        train_kw = {
+            **self.dataset_kwargs,
+            "transform": self.train_transform,
+        }
+        test_kw = {
+            **self.dataset_kwargs,
+            "transform": self.test_transform,
+        }
         split_key = self._detect_split_key()
         rng = torch.Generator().manual_seed(self.seed)
         if split_key == "train":
@@ -229,16 +228,12 @@ class BuiltinDataModule(BaseDataModule):
         else:
             full_ds = self.dataset_cls(**train_kw)
             n = len(full_ds)
-            n_test, n_val = (
-                int(n * self.test_ratio),
-                int(n * self.val_ratio),
-            )
+            n_test = int(n * self.test_ratio)
+            n_val = int(n * self.val_ratio)
             n_train = n - n_val - n_test
             a, b, c = random_split(
                 full_ds, [n_train, n_val, n_test], generator=rng
             )
-            self.train_dataset, self.val_dataset, self.test_dataset = (
-                a,
-                b,
-                c,
-            )
+            self.train_dataset = a
+            self.val_dataset = b
+            self.test_dataset = c
