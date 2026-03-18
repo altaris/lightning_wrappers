@@ -6,6 +6,7 @@ See also:
     - [`timm` model zoo](https://huggingface.co/timm/models)
 """
 
+import logging
 from typing import Any, Callable, Literal
 
 import timm
@@ -107,21 +108,28 @@ class TimmClassifier(BaseClassifier):
         non-standard schedulers (which expect ``epoch`` and
         ``metric`` keyword arguments).
         """
-        if isinstance(scheduler, torch.optim.lr_scheduler.LRScheduler):
-            if metric is None:
-                scheduler.step()
-            else:
-                scheduler.step(metric)
-        else:
+        from timm.scheduler.scheduler import Scheduler
+
+        if isinstance(scheduler, Scheduler):
             scheduler.step(epoch=self.current_epoch, metric=metric)
+        elif metric is None:
+            scheduler.step()
+        else:
+            scheduler.step(metric)
 
     def configure_optimizers(self) -> Any:
         """Configure AdamW optimizer, optionally with cosine schedule."""
+        kw = {
+            "lr": self.hparams.get("lr", 1e-3),
+        }
+        kw.update(self.hparams.get("optimizer_kwargs") or {})
         optimizer = create_optimizer_v2(
-            self,
-            opt=self.hparams.get("optimizer", "adamw"),
-            lr=self.hparams.get("lr", 1e-3),
-            **(self.hparams.get("optimizer_kwargs") or {}),
+            self, opt=self.hparams.get("optimizer", "adamw"), **kw
+        )
+        logging.debug(
+            "Creating optimizer '%s' with parameters: %s",
+            self.hparams.get("optimizer", "adamw"),
+            kw,
         )
         if scheduler_name := self.hparams.get("scheduler"):
             from timm.scheduler import create_scheduler_v2
@@ -135,9 +143,16 @@ class TimmClassifier(BaseClassifier):
                 "warmup_epochs": 2,
             }
             kw.update(self.hparams.get("scheduler_kwargs") or {})
+            logging.debug(
+                "Creating scheduler '%s' with parameters: %s",
+                scheduler_name,
+                kw,
+            )
             scheduler, _ = create_scheduler_v2(
                 optimizer=optimizer, sched=scheduler_name, **kw
             )
-            return [optimizer], [scheduler]
+            return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+
         else:
+            logging.debug("No scheduler configured.")
             return optimizer
